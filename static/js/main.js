@@ -128,6 +128,120 @@
     }
 })();
 
+function testConnection() {
+    const form = document.getElementById('loginForm');
+    const testButton = document.getElementById('testConnectionButton');
+    const statusDiv = document.getElementById('status');
+    
+    // Disable the button
+    testButton.disabled = true;
+    testButton.textContent = 'Testing...';
+    
+    // Show testing message
+    statusDiv.innerHTML = `
+        <div class="alert alert-info">
+            <h5>Testing API Connection</h5>
+            <p class="mb-0">Verifying connection to the timing API...</p>
+        </div>
+    `;
+    
+    const formData = new FormData();
+    const userId = document.getElementById('user-id').value;
+    const password = document.getElementById('password').value; 
+    const eventId = document.getElementById('event-id').value;
+    
+    // Validate input fields
+    if (!userId || !password || !eventId) {
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5>Missing Information</h5>
+                <p>Please fill in all fields (User ID, Password, and Event ID).</p>
+            </div>
+        `;
+        testButton.disabled = false;
+        testButton.textContent = 'Test Connection';
+        return;
+    }
+    
+    formData.append('user_id', userId);
+    formData.append('password', password);
+    formData.append('event_id', eventId);
+    
+    console.log('Testing connection with:', {
+        user_id: userId,
+        event_id: eventId
+    });
+    
+    fetch('/api/test-connection', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Test connection response:', data);
+        
+        // Enable the button
+        testButton.disabled = false;
+        testButton.textContent = 'Test Connection';
+        
+        if (data.success) {
+            let entryInfo = '';
+            if (data.data_sample && data.data_sample.has_entries) {
+                if (data.data_sample.entry_count > 0) {
+                    const entry = data.data_sample.first_entry;
+                    const raceInfo = entry.race_name ? `<p>Race name: <strong>${entry.race_name}</strong></p>` : '';
+                    const entryCount = `<p>Total entries: <strong>${data.headers['X-Ctlive-Page-Count'] * data.data_sample.entry_count}</strong></p>`;
+                    entryInfo = `${raceInfo}${entryCount}`;
+                } else {
+                    entryInfo = '<p>No entries found for this event.</p>';
+                }
+            }
+            
+            statusDiv.innerHTML = `
+                <div class="alert alert-success">
+                    <h5>Connection Successful</h5>
+                    <p>Successfully connected to the API for event ${eventId}</p>
+                    ${entryInfo}
+                    <small>Status code: ${data.status_code}</small>
+                </div>
+            `;
+        } else {
+            let errorDetails = '';
+            if (data.status_code) {
+                errorDetails = `<p>Status code: ${data.status_code}</p>`;
+                if (data.error_text) {
+                    errorDetails += `<p>Error: ${data.error_text}</p>`;
+                }
+            } else if (data.error) {
+                errorDetails = `<p>Error: ${data.error}</p>`;
+            }
+            
+            statusDiv.innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Connection Failed</h5>
+                    ${errorDetails}
+                    <p>Please check your credentials and event ID and try again.</p>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        console.error('Test connection error:', error);
+        
+        // Enable the button
+        testButton.disabled = false;
+        testButton.textContent = 'Test Connection';
+        
+        statusDiv.innerHTML = `
+            <div class="alert alert-danger">
+                <h5>Connection Error</h5>
+                <p>${error.message}</p>
+                <p>There was a problem connecting to the server.</p>
+            </div>
+        `;
+    });
+}
+
 function startDisplay() {
     const form = document.getElementById('loginForm');
     const startButton = document.getElementById('startButton');
@@ -147,16 +261,30 @@ function startDisplay() {
     `;
     
     const formData = new FormData();
-    formData.append('user_id', document.getElementById('user-id').value);
-    formData.append('password', document.getElementById('password').value);
-    formData.append('event_id', document.getElementById('event-id').value);
+    const userId = document.getElementById('user-id').value;
+    const password = document.getElementById('password').value; 
+    const eventId = document.getElementById('event-id').value;
+    
+    formData.append('user_id', userId);
+    formData.append('password', password);
+    formData.append('event_id', eventId);
+    
+    console.log('Sending login request with:', {
+        user_id: userId,
+        event_id: eventId
+    });
     
     fetch('/api/login', {
         method: 'POST',
         body: formData
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Login response status:', response.status);
+        return response.json();
+    })
     .then(data => {
+        console.log('Login API response:', data);
+        
         if (data.success) {
             // Hide login container
             document.getElementById('login-container').style.display = 'none';
@@ -166,48 +294,72 @@ function startDisplay() {
             customizationContainer.style.display = 'block';
             
             // Initialize preview with race name and default styles
-            document.getElementById('preview-race-name').textContent = data.race_name;
-            document.getElementById('race-name').textContent = data.race_name;
+            document.getElementById('preview-race-name').textContent = data.race_name || 'Race';
+            document.getElementById('race-name').textContent = data.race_name || 'Race';
+            
+            // Define a default theme if themes is not defined
+            const defaultTheme = {
+                background: '#ffffff',
+                text: '#000000',
+                accent: '#0d6efd',
+                nameFont: 'Arial',
+                nameSize: '48px',
+                nameAlign: 'center',
+                messageFont: 'Arial',
+                messageSize: '24px',
+                messageAlign: 'center'
+            };
             
             // Apply default theme if no saved theme exists
-            const savedTheme = localStorage.getItem('displayTheme');
-            if (!savedTheme) {
-                applyTheme(themes.default);
-            } else {
-                applyTheme(JSON.parse(savedTheme));
+            try {
+                const savedTheme = localStorage.getItem('displayTheme');
+                if (savedTheme) {
+                    applyTheme(JSON.parse(savedTheme));
+                } else if (typeof themes !== 'undefined' && themes.default) {
+                    applyTheme(themes.default);
+                } else {
+                    applyTheme(defaultTheme);
+                }
+                
+                // Initialize all controls and preview
+                if (typeof initializePreview === 'function') initializePreview();
+                if (typeof initializeThemeControls === 'function') initializeThemeControls();
+                if (typeof initializeLogoControls === 'function') initializeLogoControls();
+                if (typeof initializeMessageControls === 'function') initializeMessageControls();
+                
+                // Show preview panel
+                const previewPanel = document.querySelector('.preview-panel');
+                if (previewPanel) previewPanel.style.display = 'block';
+                
+                // Initialize EventSource for live updates
+                if (typeof initializeEventSource === 'function') initializeEventSource();
+            } catch (error) {
+                console.error('Error initializing display:', error);
+                // Still show the customization container even if there's an error
             }
-            
-            // Initialize all controls and preview
-            initializePreview();
-            initializeThemeControls();
-            initializeLogoControls();
-            initializeMessageControls();
-            
-            // Show preview panel
-            document.querySelector('.preview-panel').style.display = 'block';
-            
-            // Initialize EventSource for live updates
-            initializeEventSource();
         } else {
             // Error - re-enable form
             form.querySelectorAll('input').forEach(input => input.disabled = false);
             startButton.disabled = false;
             startButton.textContent = 'Start Display';
             
+            const errorMsg = data.error || 'Connection failed with no specific error message';
+            console.error('Login failed:', errorMsg);
+            
             statusDiv.innerHTML = `
                 <div class="alert alert-danger">
                     <h4>Connection Failed</h4>
-                    <p>Error: ${data.error}</p>
+                    <p>Error: ${errorMsg}</p>
                 </div>
             `;
         }
     })
     .catch(error => {
-        console.error('Error:', error);
+        console.error('Login request error:', error);
         statusDiv.innerHTML = `
             <div class="alert alert-danger">
                 <h4>Connection Error</h4>
-                <p>Please try again</p>
+                <p>${error.message || 'Please try again'}</p>
             </div>
         `;
         
@@ -218,6 +370,105 @@ function startDisplay() {
     });
 }
 
+// Define themes globally if not already defined
+if (typeof window.themes === 'undefined') {
+    window.themes = {
+        default: {
+            background: '#ffffff',
+            text: '#000000',
+            accent: '#0d6efd',
+            nameFont: 'Arial',
+            nameSize: '48px',
+            nameAlign: 'center',
+            messageFont: 'Arial',
+            messageSize: '24px',
+            messageAlign: 'center'
+        },
+        modern: {
+            background: '#f8f9fa',
+            text: '#212529',
+            accent: '#0dcaf0',
+            nameFont: 'Helvetica',
+            nameSize: '52px',
+            nameAlign: 'center',
+            messageFont: 'Helvetica',
+            messageSize: '26px',
+            messageAlign: 'center'
+        },
+        elegant: {
+            background: '#f8f5f0',
+            text: '#3e2723',
+            accent: '#8d6e63',
+            nameFont: 'Times New Roman',
+            nameSize: '54px',
+            nameAlign: 'center',
+            messageFont: 'Times New Roman',
+            messageSize: '28px',
+            messageAlign: 'center'
+        }
+    };
+}
+
+// Define helper functions
+function applyTheme(theme) {
+    if (!theme) return;
+    
+    // Apply to display container
+    const displayBg = document.getElementById('display-background');
+    if (displayBg) {
+        displayBg.style.backgroundColor = theme.background;
+    }
+    
+    const runnerName = document.getElementById('runner-name');
+    if (runnerName) {
+        runnerName.style.color = theme.text;
+        runnerName.style.fontFamily = theme.nameFont;
+        runnerName.style.fontSize = theme.nameSize;
+        runnerName.style.textAlign = theme.nameAlign;
+    }
+    
+    const runnerCity = document.getElementById('runner-city');
+    if (runnerCity) {
+        runnerCity.style.color = theme.text;
+    }
+    
+    const message = document.getElementById('message');
+    if (message) {
+        message.style.color = theme.text;
+        message.style.fontFamily = theme.messageFont;
+        message.style.fontSize = theme.messageSize;
+        message.style.textAlign = theme.messageAlign;
+    }
+    
+    // Also apply to preview
+    const previewBg = document.getElementById('preview-background');
+    if (previewBg) {
+        previewBg.style.backgroundColor = theme.background;
+    }
+    
+    const previewName = document.getElementById('preview-runner-name');
+    if (previewName) {
+        previewName.style.color = theme.text;
+        previewName.style.fontFamily = theme.nameFont;
+        previewName.style.fontSize = theme.nameSize;
+        previewName.style.textAlign = theme.nameAlign;
+    }
+    
+    const previewCity = document.getElementById('preview-runner-city');
+    if (previewCity) {
+        previewCity.style.color = theme.text;
+    }
+    
+    const previewMessage = document.getElementById('preview-message');
+    if (previewMessage) {
+        previewMessage.style.color = theme.text;
+        previewMessage.style.fontFamily = theme.messageFont;
+        previewMessage.style.fontSize = theme.messageSize;
+        previewMessage.style.textAlign = theme.messageAlign;
+    }
+}
+
+// Simple EventSource initializer
 function initializeEventSource() {
     if (window.eventSource) {
         window.eventSource.close();
@@ -231,34 +482,35 @@ function initializeEventSource() {
             const data = JSON.parse(event.data);
             
             if (!data.keepalive) {
-                console.log('Updating display with:', data);
-                // Get random message from custom or stock messages
-                data.message = getRandomMessage();
-                
-                const runnerName = document.getElementById('runner-name');
-                const runnerCity = document.getElementById('runner-city');
-                const message = document.getElementById('message');
-                
-                // Update content while preserving styles
-                runnerName.textContent = data.name || '';
-                runnerCity.textContent = data.city || '';
-                message.textContent = data.message;
-                
-                // Add animation
-                const container = document.getElementById('participant-info');
-                container.classList.add('animate');
-                setTimeout(() => container.classList.remove('animate'), 2000);
+                updateDisplay(data);
             }
-        } catch (error) {
-            console.error('Error processing event:', error);
+        } catch (e) {
+            console.error('Error processing event data:', e);
         }
     };
-
+    
     window.eventSource.onerror = (error) => {
         console.error('EventSource error:', error);
-        window.eventSource.close();
-        setTimeout(initializeEventSource, 5000);
     };
+}
+
+function updateDisplay(data) {
+    if (!data) return;
+    
+    const runnerName = document.getElementById('runner-name');
+    const runnerCity = document.getElementById('runner-city');
+    const message = document.getElementById('message');
+    
+    if (runnerName) runnerName.textContent = data.name || '';
+    if (runnerCity) runnerCity.textContent = data.city || '';
+    if (message) message.textContent = data.message || '';
+    
+    // Add animation
+    const container = document.getElementById('participant-info');
+    if (container) {
+        container.classList.add('animate');
+        setTimeout(() => container.classList.remove('animate'), 2000);
+    }
 }
 
 // Clean up EventSource when page is unloaded
@@ -2009,7 +2261,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         #runner-name {
-            font-size: 72px; /* Larger font */
+            font-size: 72px /* Larger font */
             font-weight: bold;
             margin-bottom: 15px;
             text-shadow: 2px 2px 8px rgba(0,0,0,0.9); /* Enhanced shadow */
@@ -2017,7 +2269,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         #runner-city {
-            font-size: 42px; /* Larger font */
+            font-size: 42px /* Larger font */
             margin-bottom: 25px;
             text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
             color: white;
@@ -2935,3 +3187,34 @@ document.addEventListener('DOMContentLoaded', function() {
         alert('Sample logo activated! You will now see a red logo box when you start the display.');
     });
 });
+
+// Fix unclosed function at the end of the file
+(function() {
+    // Your emergency fix code here
+    console.log('Fixing any unclosed statements at the end of the file');
+    
+    // Make sure all event listeners are properly closed
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded - initializing event handlers');
+        
+        // Set up the display button directly
+        const startButton = document.getElementById('startButton');
+        if (startButton) {
+            startButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                console.log('Start button clicked - calling startDisplay()');
+                startDisplay();
+            });
+        }
+        
+        // Set up test connection button
+        const testButton = document.getElementById('testConnectionButton');
+        if (testButton) {
+            testButton.addEventListener('click', function(event) {
+                event.preventDefault();
+                console.log('Test button clicked - calling testConnection()');
+                testConnection();
+            });
+        }
+    });
+})();

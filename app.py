@@ -49,13 +49,20 @@ def fetch_roster_page(event_id, credentials, page=1):
     """Fetch a single page of roster data"""
     url = f"{API_CONFIG['BASE_URL']}/event/{event_id}/entry"
     
-    # Encode the password with SHA-1
-    encoded_password = encode_password(credentials['user_pass'])
+    # Use provided credentials or fall back to defaults
+    user_id = credentials.get('user_id') or API_CONFIG.get('DEFAULT_USER_ID', '')
+    password = credentials.get('user_pass') or API_CONFIG.get('DEFAULT_PASSWORD', '')
+    
+    # Encode the password with SHA-1 (only if not already encoded)
+    if len(password) != 40:  # SHA-1 hash is 40 chars
+        encoded_password = encode_password(password)
+    else:
+        encoded_password = password
     
     params = {
         'format': API_CONFIG['FORMAT'],
         'client_id': API_CONFIG['CLIENT_ID'],
-        'user_id': credentials['user_id'],
+        'user_id': user_id,
         'user_pass': encoded_password,
         'page': page,
         'size': 50,
@@ -63,10 +70,33 @@ def fetch_roster_page(event_id, credentials, page=1):
         'elide_json': 'false'
     }
     
+    print(f"Requesting roster from: {url}")
+    print(f"Request parameters: {params}")
+    
     try:
-        response = requests.get(url, params=params)
+        response = requests.get(url, params=params, timeout=10)
+        print(f"API Response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"API Error: {response.text}")
+            return None, None
+            
         response.raise_for_status()
-        return response.json(), response.headers
+        data = response.json()
+        
+        if 'event_entry' in data and len(data['event_entry']) > 0:
+            print(f"Successfully fetched {len(data['event_entry'])} entries")
+        else:
+            print(f"Response contained no entries. Response data: {data}")
+            
+        return data, response.headers
+    except requests.exceptions.RequestException as e:
+        print(f"Request error: {e}")
+        return None, None
+    except ValueError as e:
+        print(f"JSON parsing error: {e}")
+        print(f"Response content: {response.text[:500]}...")
+        return None, None
     except Exception as e:
         print(f"Error fetching roster page {page}: {e}")
         return None, None
@@ -269,15 +299,95 @@ def process_timing_data(line):
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    default_credentials = {
+        'user_id': API_CONFIG.get('DEFAULT_USER_ID', ''),
+        'event_id': API_CONFIG.get('DEFAULT_EVENT_ID', ''),
+        'password': API_CONFIG.get('DEFAULT_PASSWORD', '')
+    }
+    return render_template('index.html', credentials=default_credentials)
+
+@app.route('/api/test-connection', methods=['POST'])
+def test_connection():
+    """Test endpoint to verify API connectivity"""
+    try:
+        password = request.form['password']
+        
+        # If password field contains a SHA-1 hash (already encoded), use it directly
+        if len(password) == 40 and all(c in '0123456789abcdef' for c in password.lower()):
+            encoded_password = password
+        else:
+            # Otherwise encode it
+            encoded_password = encode_password(password)
+            
+        credentials = {
+            'user_id': request.form['user_id'],
+            'user_pass': encoded_password,
+            'event_id': request.form['event_id']
+        }
+        
+        # Just test the connection to the API
+        url = f"{API_CONFIG['BASE_URL']}/event/{credentials['event_id']}/entry"
+        
+        params = {
+            'format': API_CONFIG['FORMAT'],
+            'client_id': API_CONFIG['CLIENT_ID'],
+            'user_id': credentials['user_id'],
+            'user_pass': encoded_password,
+            'page': 1,
+            'size': 1  # Just request 1 entry to minimize data transfer
+        }
+        
+        print(f"Testing connection to: {url}")
+        print(f"With parameters: {params}")
+        
+        response = requests.get(url, params=params, timeout=10)
+        
+        result = {
+            'status_code': response.status_code,
+            'success': response.status_code == 200,
+            'headers': dict(response.headers),
+        }
+        
+        # If successful, include a sample of the data
+        if response.status_code == 200:
+            try:
+                data = response.json()
+                result['data_sample'] = {
+                    'has_entries': 'event_entry' in data,
+                    'entry_count': len(data.get('event_entry', [])),
+                    'first_entry': data.get('event_entry', [{}])[0] if data.get('event_entry') else None
+                }
+            except ValueError:
+                result['parse_error'] = 'Could not parse JSON response'
+                result['response_text'] = response.text[:500]  # First 500 chars
+        else:
+            result['error_text'] = response.text
+            
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'error_type': type(e).__name__
+        })
 
 @app.route('/api/login', methods=['POST'])
 def login():
     try:
         # Get credentials from request
+        password = request.form['password']
+        
+        # If password field contains a SHA-1 hash (already encoded), use it directly
+        if len(password) == 40 and all(c in '0123456789abcdef' for c in password.lower()):
+            encoded_password = password
+        else:
+            # Otherwise encode it
+            encoded_password = encode_password(password)
+            
         credentials = {
             'user_id': request.form['user_id'],
-            'user_pass': request.form['password'],
+            'user_pass': encoded_password,
             'event_id': request.form['event_id']
         }
         
