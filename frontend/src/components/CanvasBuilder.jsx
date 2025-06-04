@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
+import './CanvasBuilder.css';
 
 export default function CanvasBuilder() {
   const editorRef = useRef(null);
@@ -8,7 +9,7 @@ export default function CanvasBuilder() {
 
   useEffect(() => {
     if (!editorRef.current) {
-      editorRef.current = grapesjs.init({
+      const editor = grapesjs.init({
         container: '#gjs',
         height: '600px',
         storageManager: false,
@@ -16,6 +17,21 @@ export default function CanvasBuilder() {
         assetManager: {
           upload: '/api/upload-image',
           uploadName: 'files'
+        },
+        styleManager: {
+          appendTo: '#style',
+          sectors: [
+            {
+              name: 'Typography',
+              open: true,
+              buildProps: ['font-size', 'color', 'text-align']
+            },
+            {
+              name: 'Dimension',
+              open: false,
+              buildProps: ['width', 'height']
+            }
+          ]
         },
         blockManager: {
           appendTo: '#blocks',
@@ -44,9 +60,60 @@ export default function CanvasBuilder() {
               id: 'image',
               label: 'Image',
               content: '<img src="" alt="" />',
+            },
+            {
+              id: 'sponsor',
+              label: 'Sponsor Image',
+              content: '<img src="" alt="Sponsor" />',
+            },
+            {
+              id: 'background',
+              label: 'Background',
+              content: '<div style="min-height:100px; background-image:url(\'\');"></div>',
             }
           ]
         }
+      });
+      editorRef.current = editor;
+
+      const snap = v => Math.round(parseInt(v) / 20) * 20;
+      const applySnap = model => {
+        const style = model.getStyle();
+        ['top', 'left', 'width', 'height'].forEach(p => {
+          const val = parseInt(style[p]);
+          if (!isNaN(val)) model.addStyle({ [p]: snap(val) + 'px' });
+        });
+      };
+      editor.on('component:drag:end', applySnap);
+      editor.on('component:resize:end', applySnap);
+
+      editor.on('component:selected', m => {
+        const tb = [...(m.get('toolbar') || [])];
+        const add = (id, command, label) => {
+          if (!tb.find(t => t.id === id)) tb.push({ id, command, label });
+        };
+        add('duplicate', 'core:clone', 'Dup');
+        add('delete', 'core:delete', 'Del');
+        add('align-l', 'align-left', 'L');
+        add('align-c', 'align-center', 'C');
+        add('align-r', 'align-right', 'R');
+        m.set('toolbar', tb);
+        m.set('resizable', true);
+      });
+
+      editor.Commands.add('save-template', { run: handleSave });
+      editor.Commands.add('fullscreen', {
+        run(ed) { ed.getContainer().classList.add('gjs-fullscreen'); },
+        stop(ed) { ed.getContainer().classList.remove('gjs-fullscreen'); }
+      });
+      editor.Commands.add('align-left', {
+        run(ed) { const s = ed.getSelected(); if (s) s.addStyle({ 'text-align': 'left' }); }
+      });
+      editor.Commands.add('align-center', {
+        run(ed) { const s = ed.getSelected(); if (s) s.addStyle({ 'text-align': 'center' }); }
+      });
+      editor.Commands.add('align-right', {
+        run(ed) { const s = ed.getSelected(); if (s) s.addStyle({ 'text-align': 'right' }); }
       });
     }
   }, []);
@@ -91,7 +158,11 @@ export default function CanvasBuilder() {
   return (
     <div>
       <div className="mb-2">
-        <button className="btn btn-primary me-2" onClick={handleSave}>Save Template</button>
+        <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('core:undo')}>Undo</button>
+        <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('core:redo')}>Redo</button>
+        <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('open-assets')}>Images</button>
+        <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('fullscreen')}>Fullscreen</button>
+        <button className="btn btn-primary me-2" onClick={() => editorRef.current.runCommand('save-template')}>Save Template</button>
         <select className="form-select d-inline w-auto" onChange={handleLoad}>
           <option value="">Load Template...</option>
           {templates.map(t => (
@@ -101,7 +172,8 @@ export default function CanvasBuilder() {
       </div>
       <div className="row">
         <div id="blocks" className="col-2"></div>
-        <div id="gjs" className="col"></div>
+        <div id="gjs" className="col-8"></div>
+        <div id="style" className="col-2"></div>
       </div>
     </div>
   );
