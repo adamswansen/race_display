@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
+import os
 import socketserver
 import threading
 import queue
@@ -297,14 +298,23 @@ def process_timing_data(line):
         print(f"Line causing error: {line}")
     return None
 
-@app.route('/')
-def index():
+@app.route('/old')
+def old_index():
     default_credentials = {
         'user_id': API_CONFIG.get('DEFAULT_USER_ID', ''),
         'event_id': API_CONFIG.get('DEFAULT_EVENT_ID', ''),
         'password': API_CONFIG.get('DEFAULT_PASSWORD', '')
     }
-    return render_template('index.html', credentials=default_credentials)
+    return render_template('old_index.html', credentials=default_credentials)
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    dist_dir = os.path.join(app.root_path, 'frontend', 'dist')
+    file_path = os.path.join(dist_dir, path)
+    if path != '' and os.path.exists(file_path):
+        return send_from_directory(dist_dir, path)
+    return send_from_directory(dist_dir, 'index.html')
 
 @app.route('/api/test-connection', methods=['POST'])
 def test_connection():

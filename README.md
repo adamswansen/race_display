@@ -31,6 +31,23 @@ cd race_display
 pip install -r requirements.txt
 ```
 
+### Frontend setup
+
+The frontend is now a React application located in `frontend/`.
+Install Node.js then run:
+
+```bash
+cd frontend
+npm install
+npm run build  # produces the production files in frontend/dist
+```
+
+During development you can start a dev server with:
+
+```bash
+npm run dev
+```
+
 3. Configure the application:
    - Copy `config.example.py` to `config.py`
    - Update the configuration settings in `config.py`
