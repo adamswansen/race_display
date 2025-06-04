@@ -15,7 +15,7 @@ export default function RunnerDisplay() {
     if (saved.length === 0) {
       const defaultTemplate = {
         name: 'Default',
-        html: '<div class="text-center p-4">\n  <h1 class="runner-name">Runner Name</h1>\n  <h3 class="runner-city">City</h3>\n  <p class="runner-message">Great job!</p>\n</div>'
+        html: '<div class="text-center p-4">\n  <h1 data-placeholder="name">{{name}}</h1>\n  <h3 data-placeholder="city">{{city}}</h3>\n  <p data-placeholder="message">{{message}}</p>\n</div>'
       };
       localStorage.setItem('gjs-templates', JSON.stringify([defaultTemplate]));
       setTemplates([defaultTemplate]);
@@ -46,6 +46,18 @@ export default function RunnerDisplay() {
     set('runner-city', runner.city);
     set('runner-message', runner.message);
     set('bib-number', runner.bib);
+
+    // Update GrapesJS placeholders
+    el.querySelectorAll('[data-placeholder]').forEach(node => {
+      const key = node.getAttribute('data-placeholder');
+      if (key && runner[key] !== undefined) {
+        if (node.tagName === 'IMG') {
+          node.src = runner[key];
+        } else {
+          node.textContent = runner[key] || '';
+        }
+      }
+    });
   }, [runner, selected]);
 
   // Stream timing data
