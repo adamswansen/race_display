@@ -66,7 +66,7 @@ def fetch_roster_page(event_id, credentials, page=1):
         'user_id': user_id,
         'user_pass': encoded_password,
         'page': page,
-        'size': 50,
+        'size': 100,  # Increased page size to reduce number of requests
         'include_test_entries': 'true',
         'elide_json': 'false'
     }
@@ -77,6 +77,7 @@ def fetch_roster_page(event_id, credentials, page=1):
     try:
         response = requests.get(url, params=params, timeout=10)
         print(f"API Response status: {response.status_code}")
+        print(f"API Response headers: {dict(response.headers)}")
         
         if response.status_code != 200:
             print(f"API Error: {response.text}")
@@ -85,12 +86,28 @@ def fetch_roster_page(event_id, credentials, page=1):
         response.raise_for_status()
         data = response.json()
         
-        if 'event_entry' in data and len(data['event_entry']) > 0:
+        # Validate response structure
+        if not isinstance(data, dict):
+            print(f"Invalid response format: expected dict, got {type(data)}")
+            return None, None
+            
+        if 'event_entry' not in data:
+            print(f"Missing 'event_entry' in response: {data}")
+            return None, None
+            
+        if not isinstance(data['event_entry'], list):
+            print(f"Invalid 'event_entry' format: expected list, got {type(data['event_entry'])}")
+            return None, None
+            
+        if len(data['event_entry']) > 0:
             print(f"Successfully fetched {len(data['event_entry'])} entries")
+            # Log first entry for debugging
+            print(f"First entry sample: {data['event_entry'][0]}")
         else:
             print(f"Response contained no entries. Response data: {data}")
             
         return data, response.headers
+        
     except requests.exceptions.RequestException as e:
         print(f"Request error: {e}")
         return None, None
@@ -108,22 +125,41 @@ def fetch_complete_roster(event_id, credentials):
     roster_data = {}
     
     # Fetch first page to get total pages
-    data, headers = fetch_roster_page(event_id, credentials)
+    data, headers = fetch_roster_page(event_id, credentials, page=1)
     if not data:
         return False
     
+    # Get pagination info from headers
     total_pages = int(headers.get('X-Ctlive-Page-Count', 1))
-    print(f"Total pages to fetch: {total_pages}")
+    total_rows = int(headers.get('X-Ctlive-Row-Count', 0))
+    print(f"Total entries to fetch: {total_rows} across {total_pages} pages")
     
     # Process first page
     for entry in data['event_entry']:
-        # Store only the fields we need
+        # Store all relevant runner information
         bib = entry.get('entry_bib')
+        if not bib:  # If no bib, use entry_id as fallback
+            bib = entry.get('entry_id')
+            
         if bib:
             roster_data[bib] = {
+                'name': entry.get('entry_name', ''),  # Full name
                 'first_name': entry.get('athlete_first_name', ''),
                 'last_name': entry.get('athlete_last_name', ''),
-                'city': entry.get('location_city', '')
+                'age': entry.get('entry_race_age', ''),
+                'gender': entry.get('athlete_sex', ''),
+                'city': entry.get('location_city', ''),
+                'state': entry.get('location_region', ''),
+                'country': entry.get('location_country', ''),
+                'division': entry.get('bracket_name', ''),  # Age group/division
+                'race_name': entry.get('race_name', ''),
+                'reg_choice': entry.get('reg_choice_name', ''),  # Race category
+                'wave': entry.get('wave_name', ''),
+                'team_name': entry.get('team_name', ''),
+                'entry_status': entry.get('entry_status', ''),
+                'entry_type': entry.get('entry_type', ''),
+                'entry_id': entry.get('entry_id', ''),
+                'athlete_id': entry.get('athlete_id', '')
             }
             # Store race name (we'll get it from the first entry)
             if race_name is None:
@@ -136,14 +172,34 @@ def fetch_complete_roster(event_id, credentials):
         if data:
             for entry in data['event_entry']:
                 bib = entry.get('entry_bib')
+                if not bib:  # If no bib, use entry_id as fallback
+                    bib = entry.get('entry_id')
+                    
                 if bib:
                     roster_data[bib] = {
+                        'name': entry.get('entry_name', ''),
                         'first_name': entry.get('athlete_first_name', ''),
                         'last_name': entry.get('athlete_last_name', ''),
-                        'city': entry.get('location_city', '')
+                        'age': entry.get('entry_race_age', ''),
+                        'gender': entry.get('athlete_sex', ''),
+                        'city': entry.get('location_city', ''),
+                        'state': entry.get('location_region', ''),
+                        'country': entry.get('location_country', ''),
+                        'division': entry.get('bracket_name', ''),
+                        'race_name': entry.get('race_name', ''),
+                        'reg_choice': entry.get('reg_choice_name', ''),
+                        'wave': entry.get('wave_name', ''),
+                        'team_name': entry.get('team_name', ''),
+                        'entry_status': entry.get('entry_status', ''),
+                        'entry_type': entry.get('entry_type', ''),
+                        'entry_id': entry.get('entry_id', ''),
+                        'athlete_id': entry.get('athlete_id', '')
                     }
     
     print(f"Total runners loaded: {len(roster_data)}")
+    if len(roster_data) != total_rows:
+        print(f"Warning: Expected {total_rows} entries but loaded {len(roster_data)}")
+    
     return True
 
 def generate_auth_seed():
@@ -281,12 +337,24 @@ def process_timing_data(line):
                 print(f"Found bib {data['bib']} in roster")
                 runner_data = roster_data[data['bib']]
                 processed_data = {
-                    'name': f"{runner_data['first_name']} {runner_data['last_name']}",
+                    'name': runner_data['name'],  # Use full name from entry_name
+                    'first_name': runner_data['first_name'],
+                    'last_name': runner_data['last_name'],
+                    'age': runner_data['age'],
+                    'gender': runner_data['gender'],
                     'city': runner_data['city'],
+                    'state': runner_data['state'],
+                    'country': runner_data['country'],
+                    'division': runner_data['division'],
+                    'race_name': runner_data['race_name'],
+                    'reg_choice': runner_data['reg_choice'],
+                    'wave': runner_data['wave'],
+                    'team_name': runner_data['team_name'],
                     'message': random.choice(RANDOM_MESSAGES),
                     'timestamp': data['time'],
                     'location': data['location'],
-                    'lap': data['lap']
+                    'lap': data['lap'],
+                    'bib': data['bib']
                 }
                 print(f"Runner found: {processed_data}")
                 return processed_data
