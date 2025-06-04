@@ -452,6 +452,20 @@ export default function CanvasBuilder() {
           }
         }
       });
+
+      editor.on('load', () => {
+        const root = editor.getWrapper();
+        if (!root.components().length) {
+          const container = root.append(`
+            <div class="layout-root" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:2px dashed #ccc;">
+              <span style="color:#888;font-size:1.1rem;">
+                Drop or click ＋ to add elements
+              </span>
+            </div>
+          `)[0];
+          editor.select(container);
+        }
+      });
     }
   }, []);
 
