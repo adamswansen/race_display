@@ -13,16 +13,20 @@ import requests
 from datetime import datetime
 from threading import Lock
 from config import (
-    RANDOM_MESSAGES, 
-    API_CONFIG, 
+    RANDOM_MESSAGES,
+    API_CONFIG,
     PROTOCOL_CONFIG,
     SERVER_CONFIG
 )
 from bs4 import BeautifulSoup
 import tinycss2
 from urllib.parse import urljoin, urlparse
+import logging
 
 app = Flask(__name__, static_folder='static')
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Global variables
 roster_data = {}
@@ -532,7 +536,8 @@ def is_valid_url(url):
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
-    except:
+    except Exception as e:
+        logger.error("Failed to parse URL '%s': %s", url, e)
         return False
 
 def extract_colors_from_css(css_text):
@@ -607,7 +612,8 @@ def fetch_styles():
                     if css_response.ok:
                         styles['colors'].update(extract_colors_from_css(css_response.text))
                         styles['fonts'].update(extract_fonts_from_css(css_response.text))
-                except:
+                except requests.RequestException as e:
+                    logger.warning("Failed to fetch CSS %s: %s", css_url, e)
                     continue
         
         # Process inline styles
