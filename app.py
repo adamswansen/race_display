@@ -42,6 +42,12 @@ listeners_started = False
 # Add to global variables
 AUTH_SECRETS = {}  # Store connection-specific secrets
 
+# Directories for saved templates and uploaded images
+TEMPLATE_DIR = os.path.join(app.root_path, 'saved_templates')
+UPLOAD_DIR = os.path.join(app.static_folder, 'uploads')
+os.makedirs(TEMPLATE_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 def encode_password(password):
     """Encode password using SHA-1"""
     return hashlib.sha1(password.encode('utf-8')).hexdigest()
@@ -633,6 +639,55 @@ def fetch_styles():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# ---------------------------------------------------------------------------
+# Template and asset management endpoints
+# ---------------------------------------------------------------------------
+
+@app.route('/api/upload-image', methods=['POST'])
+def upload_image():
+    """Handle image uploads from the editor"""
+    files = request.files.getlist('files') or request.files.getlist('file')
+    if not files:
+        return jsonify({'error': 'No files uploaded'}), 400
+    urls = []
+    for f in files:
+        fname = ''.join(c for c in f.filename if c.isalnum() or c in ('_', '-', '.'))
+        path = os.path.join(UPLOAD_DIR, fname)
+        f.save(path)
+        urls.append(f'/static/uploads/{fname}')
+    return jsonify({'data': urls})
+
+
+@app.route('/api/templates', methods=['GET', 'POST'])
+def manage_templates():
+    """Save a template or list available templates"""
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        name = data.get('name')
+        html = data.get('html')
+        if not name or not html:
+            return jsonify({'error': 'Missing name or html'}), 400
+        safe = ''.join(c for c in name if c.isalnum() or c in ('_', '-')).rstrip()
+        with open(os.path.join(TEMPLATE_DIR, f'{safe}.html'), 'w', encoding='utf-8') as fp:
+            fp.write(html)
+        return jsonify({'success': True})
+
+    templates = [f[:-5] for f in os.listdir(TEMPLATE_DIR) if f.endswith('.html')]
+    return jsonify(templates)
+
+
+@app.route('/api/templates/<name>', methods=['GET'])
+def get_template(name):
+    """Retrieve a saved template"""
+    safe = ''.join(c for c in name if c.isalnum() or c in ('_', '-')).rstrip()
+    path = os.path.join(TEMPLATE_DIR, f'{safe}.html')
+    if not os.path.exists(path):
+        return jsonify({'error': 'Template not found'}), 404
+    with open(path, 'r', encoding='utf-8') as fp:
+        html = fp.read()
+    return jsonify({'html': html})
 
 if __name__ == '__main__':
     app.run(
