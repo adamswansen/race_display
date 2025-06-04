@@ -654,15 +654,32 @@ def fetch_styles():
 @app.route('/api/upload-image', methods=['POST'])
 def upload_image():
     """Handle image uploads from the editor"""
-    files = request.files.getlist('files') or request.files.getlist('file')
+    logger.info("Received upload request")
+    logger.info("Request files: %s", request.files)
+    logger.info("Request form: %s", request.form)
+    
+    # Try different possible field names for files
+    files = (request.files.getlist('files[]') or 
+             request.files.getlist('files') or 
+             request.files.getlist('file'))
+             
     if not files:
+        logger.error("No files found in request")
         return jsonify({'error': 'No files uploaded'}), 400
+        
     urls = []
     for f in files:
+        logger.info("Processing file: %s", f.filename)
         fname = ''.join(c for c in f.filename if c.isalnum() or c in ('_', '-', '.'))
         path = os.path.join(UPLOAD_DIR, fname)
-        f.save(path)
-        urls.append(f'/static/uploads/{fname}')
+        try:
+            f.save(path)
+            urls.append(f'/static/uploads/{fname}')
+            logger.info("Successfully saved file to: %s", path)
+        except Exception as e:
+            logger.error("Failed to save file: %s", str(e))
+            return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
+            
     return jsonify({'data': urls})
 
 
