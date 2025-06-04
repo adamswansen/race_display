@@ -1,0 +1,17 @@
+#gjs {
+  border: 1px solid #ddd;
+  background-image: linear-gradient(0deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent);
+  background-size: 20px 20px;
+}
+
+.gjs-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999;
+}
