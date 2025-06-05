@@ -8,7 +8,6 @@ const EDITOR_CONFIG = {
   container: '#gjs',
   height: '600px',
   storageManager: false,
-  panels: { defaults: [] },
   deviceManager: {
     devices: [
       {
@@ -100,6 +99,11 @@ const EDITOR_CONFIG = {
         buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration', 'text-shadow'],
       },
       {
+        name: 'Background',
+        open: false,
+        buildProps: ['background-color', 'background-image', 'background-repeat', 'background-position', 'background-size', 'background-attachment'],
+      },
+      {
         name: 'Decorations',
         open: false,
         buildProps: ['border-radius', 'border', 'box-shadow', 'background'],
@@ -172,11 +176,33 @@ const EDITOR_CONFIG = {
       {
         id: 'background',
         label: 'Background',
-        content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
         category: 'Layout',
+        content: `
+          <div class="background-block" style="min-height: 100%; width: 100%; background-color: #f5f5f5; position: absolute; top: 0; left: 0; z-index: -1;">
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <span style="color: #666;">Background Container</span>
+            </div>
+          </div>
+        `,
         attributes: {
           class: 'gjs-block',
-          title: 'Drag Background'
+          title: 'Drag Background Container'
+        }
+      },
+      {
+        id: 'gradient-background',
+        label: 'Gradient Background',
+        category: 'Layout',
+        content: `
+          <div class="gradient-background" style="min-height: 100%; width: 100%; background: linear-gradient(45deg, #6b48ff, #ff4848); position: absolute; top: 0; left: 0; z-index: -1;">
+            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+              <span style="color: white;">Gradient Background</span>
+            </div>
+          </div>
+        `,
+        attributes: {
+          class: 'gjs-block',
+          title: 'Drag Gradient Background'
         }
       }
     ]
@@ -295,6 +321,11 @@ export default function CanvasBuilder() {
               buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration', 'text-shadow'],
             },
             {
+              name: 'Background',
+              open: false,
+              buildProps: ['background-color', 'background-image', 'background-repeat', 'background-position', 'background-size', 'background-attachment'],
+            },
+            {
               name: 'Decorations',
               open: false,
               buildProps: ['border-radius', 'border', 'box-shadow', 'background'],
@@ -367,11 +398,33 @@ export default function CanvasBuilder() {
             {
               id: 'background',
               label: 'Background',
-              content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
               category: 'Layout',
+              content: `
+                <div class="background-block" style="min-height: 100%; width: 100%; background-color: #f5f5f5; position: absolute; top: 0; left: 0; z-index: -1;">
+                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: #666;">Background Container</span>
+                  </div>
+                </div>
+              `,
               attributes: {
                 class: 'gjs-block',
-                title: 'Drag Background'
+                title: 'Drag Background Container'
+              }
+            },
+            {
+              id: 'gradient-background',
+              label: 'Gradient Background',
+              category: 'Layout',
+              content: `
+                <div class="gradient-background" style="min-height: 100%; width: 100%; background: linear-gradient(45deg, #6b48ff, #ff4848); position: absolute; top: 0; left: 0; z-index: -1;">
+                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <span style="color: white;">Gradient Background</span>
+                  </div>
+                </div>
+              `,
+              attributes: {
+                class: 'gjs-block',
+                title: 'Drag Gradient Background'
               }
             }
           ]
@@ -465,6 +518,28 @@ export default function CanvasBuilder() {
           `)[0];
           editor.select(container);
         }
+
+        // Add background handling
+        editor.on('component:add', (component) => {
+          if (component.is('background-block') || component.is('gradient-background')) {
+            const wrapper = component.getWrapper();
+            wrapper.setStyle({
+              'width': '100%',
+              'height': '100%',
+              'position': 'absolute',
+              'top': '0',
+              'left': '0',
+              'z-index': '-1'
+            });
+          }
+        });
+
+        // Ensure body takes full height
+        const body = editor.getBody();
+        body.style.minHeight = '100%';
+        body.style.height = '100%';
+        body.style.margin = '0';
+        body.style.padding = '0';
       });
     }
   }, []);
