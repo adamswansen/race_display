@@ -8,6 +8,20 @@ const EDITOR_CONFIG = {
   container: '#gjs',
   height: '600px',
   storageManager: false,
+  draggable: true,
+  resizable: true,
+  wrapper: {
+    removable: false,
+    copyable: false,
+    draggable: false,
+    style: {
+      'min-height': '100%',
+      'height': '100%',
+      'margin': '0',
+      'padding': '0',
+      'position': 'relative'
+    }
+  },
   deviceManager: {
     devices: [
       {
@@ -23,11 +37,25 @@ const EDITOR_CONFIG = {
   },
   canvas: {
     styles: [
-      'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
+      'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css',
+      {
+        selectors: ['body'],
+        style: {
+          'min-height': '100%',
+          'height': '100%',
+          'margin': '0',
+          'padding': '0',
+          'position': 'relative'
+        }
+      }
     ],
     scripts: [
       'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
-    ]
+    ],
+    customBadgeLabel: false,
+    enableSelection: true,
+    enableDragging: true,
+    enableResizing: true
   },
   layerManager: {
     appendTo: '.layers-container'
@@ -77,11 +105,6 @@ const EDITOR_CONFIG = {
         type: 'image',
         src: '/static/uploads/SRS_black_bg_noword.png',
         name: 'SRS Logo'
-      },
-      {
-        type: 'image',
-        src: '/static/uploads/iRunTheD.jpg',
-        name: 'iRunTheD'
       }
     ]
   },
@@ -172,38 +195,6 @@ const EDITOR_CONFIG = {
           class: 'gjs-block',
           title: 'Drag Custom Image'
         }
-      },
-      {
-        id: 'background',
-        label: 'Background',
-        category: 'Layout',
-        content: `
-          <div class="background-block" style="min-height: 100%; width: 100%; background-color: #f5f5f5; position: absolute; top: 0; left: 0; z-index: -1;">
-            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-              <span style="color: #666;">Background Container</span>
-            </div>
-          </div>
-        `,
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag Background Container'
-        }
-      },
-      {
-        id: 'gradient-background',
-        label: 'Gradient Background',
-        category: 'Layout',
-        content: `
-          <div class="gradient-background" style="min-height: 100%; width: 100%; background: linear-gradient(45deg, #6b48ff, #ff4848); position: absolute; top: 0; left: 0; z-index: -1;">
-            <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-              <span style="color: white;">Gradient Background</span>
-            </div>
-          </div>
-        `,
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag Gradient Background'
-        }
       }
     ]
   }
@@ -212,11 +203,29 @@ const EDITOR_CONFIG = {
 // Utility functions
 const snap = v => Math.round(parseInt(v) / 20) * 20;
 const applySnap = model => {
+  if (!model || typeof model.getStyle !== 'function') return;
+  
   const style = model.getStyle();
+  if (!style) return;
+  
   ['top', 'left', 'width', 'height'].forEach(p => {
     const val = parseInt(style[p]);
     if (!isNaN(val)) model.addStyle({ [p]: snap(val) + 'px' });
   });
+};
+
+// Helper function to configure blocks with absolute positioning and drag handles
+const configureBlock = (block) => {
+  return {
+    ...block,
+    content: block.content,
+    attributes: {
+      ...block.attributes,
+      class: 'gjs-block',
+      title: block.attributes?.title || 'Drag to add'
+    },
+    style: { position: 'absolute', cursor: 'move' }
+  };
 };
 
 export default function CanvasBuilder() {
@@ -227,215 +236,60 @@ export default function CanvasBuilder() {
   useEffect(() => {
     if (!editorRef.current) {
       const editor = grapesjs.init({
-        container: '#gjs',
-        height: '600px',
-        storageManager: false,
-        deviceManager: {
-          devices: [
-            {
-              name: 'Desktop',
-              width: '',
-            },
-            {
-              name: 'Mobile',
-              width: '320px',
-              widthMedia: '480px',
-            }
-          ]
-        },
-        canvas: {
-          styles: [
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
-          ],
-          scripts: [
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
-          ]
-        },
-        layerManager: {
-          appendTo: '.layers-container'
-        },
-        panels: {
-          defaults: [
-            {
-              id: 'layers',
-              el: '.panel__right',
-              resizable: {
-                tc: 0,
-                cr: 1,
-                cl: 0,
-                bc: 0,
-                keyWidth: 'flex-basis',
-                keyHeight: 'height',
-              },
-            },
-            {
-              id: 'panel-switcher',
-              el: '.panel__switcher',
-              buttons: [
-                {
-                  id: 'show-layers',
-                  active: true,
-                  label: 'Layers',
-                  command: 'show-layers',
-                  togglable: false,
-                },
-                {
-                  id: 'show-style',
-                  active: true,
-                  label: 'Styles',
-                  command: 'show-styles',
-                  togglable: false,
-                }
-              ],
-            }
-          ]
-        },
-        assetManager: {
-          upload: '/api/upload-image',
-          uploadName: 'files',
-          uploadPath: '/static/uploads/',
-          assets: [
-            {
-              type: 'image',
-              src: '/static/uploads/SRS_black_bg_noword.png',
-              name: 'SRS Logo'
-            },
-            {
-              type: 'image',
-              src: '/static/uploads/iRunTheD.jpg',
-              name: 'iRunTheD'
-            }
-          ]
-        },
-        styleManager: {
-          appendTo: '#style',
-          sectors: [
-            {
-              name: 'Dimension',
-              open: false,
-              buildProps: ['width', 'height', 'min-width', 'min-height', 'padding', 'margin'],
-            },
-            {
-              name: 'Typography',
-              open: false,
-              buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration', 'text-shadow'],
-            },
-            {
-              name: 'Background',
-              open: false,
-              buildProps: ['background-color', 'background-image', 'background-repeat', 'background-position', 'background-size', 'background-attachment'],
-            },
-            {
-              name: 'Decorations',
-              open: false,
-              buildProps: ['border-radius', 'border', 'box-shadow', 'background'],
-            },
-            {
-              name: 'Extra',
-              open: false,
-              buildProps: ['opacity', 'transition', 'transform'],
-            },
-            {
-              name: 'Position',
-              open: false,
-              buildProps: ['position', 'top', 'right', 'left', 'bottom', 'z-index'],
-            },
-            {
-              name: 'Alignment',
-              open: false,
-              buildProps: ['display', 'flex-direction', 'justify-content', 'align-items', 'text-align'],
-            }
-          ]
-        },
+        ...EDITOR_CONFIG,
+        dragMode: 'absolute',
         blockManager: {
-          appendTo: '#blocks',
-          blocks: [
-            {
-              id: 'bib',
-              label: 'Bib Number',
-              content: '<span data-placeholder="bib">{{bib}}</span>',
-            },
-            {
-              id: 'name',
-              label: 'Name',
-              content: '<span data-placeholder="name">{{name}}</span>',
-            },
-            {
-              id: 'city',
-              label: 'City/State',
-              content: '<span data-placeholder="city">{{city}}</span>',
-            },
-            {
-              id: 'srs-logo',
-              label: 'SRS Logo',
-              content: '<img src="/static/uploads/SRS_black_bg_noword.png" alt="SRS Logo" style="max-width: 100%; height: auto;" />',
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag SRS Logo'
-              }
-            },
-            {
-              id: 'irun-logo',
-              label: 'iRun Logo',
-              content: '<img src="/static/uploads/iRunTheD.jpg" alt="iRun Logo" style="max-width: 100%; height: auto;" />',
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag iRun Logo'
-              }
-            },
-            {
-              id: 'image',
-              label: 'Custom Image',
-              content: '<img src="" alt="Custom Image" style="max-width: 100%; height: auto;" />',
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag Custom Image'
-              }
-            },
-            {
-              id: 'background',
-              label: 'Background',
-              category: 'Layout',
-              content: `
-                <div class="background-block" style="min-height: 100%; width: 100%; background-color: #f5f5f5; position: absolute; top: 0; left: 0; z-index: -1;">
-                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <span style="color: #666;">Background Container</span>
-                  </div>
-                </div>
-              `,
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag Background Container'
-              }
-            },
-            {
-              id: 'gradient-background',
-              label: 'Gradient Background',
-              category: 'Layout',
-              content: `
-                <div class="gradient-background" style="min-height: 100%; width: 100%; background: linear-gradient(45deg, #6b48ff, #ff4848); position: absolute; top: 0; left: 0; z-index: -1;">
-                  <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <span style="color: white;">Gradient Background</span>
-                  </div>
-                </div>
-              `,
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag Gradient Background'
-              }
-            }
-          ]
+          ...EDITOR_CONFIG.blockManager,
+          blocks: EDITOR_CONFIG.blockManager.blocks.map(configureBlock)
         }
       });
       editorRef.current = editor;
+
+      // Add Page Background sector and configure wrapper
+      const wrapper = editor.getWrapper();
+      editor.StyleManager.addSector('page-background', {
+        name: 'Page Background',
+        open: true,
+        buildProps: [
+          'background-color',
+          'background-image',
+          'background-size',
+          'background-position',
+          'background-repeat'
+        ],
+      });
+
+      // Configure background-image as asset type
+      editor.StyleManager.addProperty('page-background', {
+        property: 'background-image',
+        type: 'asset',
+        full: true,
+        functionName: 'url',
+        default: 'none',
+      });
+
+      // Show style panel for wrapper on load
+      editor.on('load', () => editor.select(wrapper));
 
       // Setup event listeners
       editor.on('component:drag:end', applySnap);
       editor.on('component:resize:end', applySnap);
       editor.on('component:selected', handleComponentSelected);
+      editor.on('component:add', (component) => {
+        // Configure all components for dragging
+        component.set({
+          draggable: true,
+          resizable: {
+            handles: ['tl', 'tr', 'bl', 'br', 'ml', 'mr', 'mt', 'mb'],
+            minWidth: 20,
+            minHeight: 20
+          },
+          style: {
+            position: 'absolute',
+            cursor: 'move'
+          }
+        });
+      });
 
       // Register custom commands
       registerCustomCommands(editor);
@@ -444,22 +298,22 @@ export default function CanvasBuilder() {
       editor.Commands.add('show-layers', {
         run: (editor) => {
           const panel = editor.Panels.getPanel('layers');
-          panel.set('visible', true);
+          if (panel) panel.set('visible', true);
         },
         stop: (editor) => {
           const panel = editor.Panels.getPanel('layers');
-          panel.set('visible', false);
+          if (panel) panel.set('visible', false);
         }
       });
 
       editor.Commands.add('show-styles', {
         run: (editor) => {
           const panel = editor.Panels.getPanel('styles');
-          panel.set('visible', true);
+          if (panel) panel.set('visible', true);
         },
         stop: (editor) => {
           const panel = editor.Panels.getPanel('styles');
-          panel.set('visible', false);
+          if (panel) panel.set('visible', false);
         }
       });
 
@@ -510,36 +364,45 @@ export default function CanvasBuilder() {
         const root = editor.getWrapper();
         if (!root.components().length) {
           const container = root.append(`
-            <div class="layout-root" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;border:2px dashed #ccc;">
+            <div class="layout-root" 
+                 style="position:relative;width:100%;height:100%;
+                        display:flex;align-items:center;justify-content:center;
+                        border:2px dashed #ccc;">
               <span style="color:#888;font-size:1.1rem;">
                 Drop or click ＋ to add elements
               </span>
             </div>
           `)[0];
+          
+          // Configure container for dragging
+          container.set({
+            draggable: true,
+            resizable: true,
+            selectable: true,
+            hoverable: true,
+            removable: false,
+            copyable: false,
+            style: {
+              'min-height': '100%',
+              'height': '100%',
+              'margin': '0',
+              'padding': '0',
+              'position': 'relative'
+            }
+          });
+          
           editor.select(container);
         }
 
-        // Add background handling
-        editor.on('component:add', (component) => {
-          if (component.is('background-block') || component.is('gradient-background')) {
-            const wrapper = component.getWrapper();
-            wrapper.setStyle({
-              'width': '100%',
-              'height': '100%',
-              'position': 'absolute',
-              'top': '0',
-              'left': '0',
-              'z-index': '-1'
-            });
-          }
-        });
-
-        // Ensure body takes full height
-        const body = editor.getBody();
-        body.style.minHeight = '100%';
-        body.style.height = '100%';
-        body.style.margin = '0';
-        body.style.padding = '0';
+        // Ensure body takes full height and allows dragging
+        const body = editor.getDocument().body;
+        if (body) {
+          body.style.minHeight = '100%';
+          body.style.height = '100%';
+          body.style.margin = '0';
+          body.style.padding = '0';
+          body.style.position = 'relative';
+        }
       });
     }
   }, []);
@@ -570,7 +433,20 @@ export default function CanvasBuilder() {
     add('align-c', 'align-center', 'C');
     add('align-r', 'align-right', 'R');
     m.set('toolbar', tb);
-    m.set('resizable', true);
+    
+    // Enable dragging and resizing
+    m.set('draggable', true);
+    m.set('resizable', {
+      handles: ['tl', 'tr', 'bl', 'br', 'ml', 'mr', 'mt', 'mb'],
+      minWidth: 20,
+      minHeight: 20
+    });
+    m.set('movable', true);
+    
+    // Add custom styles for drag handles
+    m.addStyle({
+      'cursor': 'move'
+    });
   };
 
   const registerCustomCommands = editor => {

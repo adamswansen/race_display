@@ -5,6 +5,10 @@
   background-color: #f8f9fa;
 }
 
+.layout-root {
+  position: relative;
+}
+
 .canvas-builder__toolbar {
   padding: 1rem;
   background-color: #fff;
