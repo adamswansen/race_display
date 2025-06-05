@@ -4,35 +4,56 @@ import './RunnerDisplay.css';
 
 export default function RunnerDisplay() {
   const [runner, setRunner] = useState(null);
-  const [templates, setTemplates] = useState([]);
+  const [templates, setTemplates] = useState([]); // list of template names
   const [selected, setSelected] = useState('');
+  const [templateHTML, setTemplateHTML] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const displayRef = useRef(null);
 
-  // Load templates from localStorage
+  // Load templates from the server
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem('gjs-templates') || '[]');
-    if (saved.length === 0) {
-      const defaultTemplate = {
-        name: 'Default',
-        html: '<div class="text-center p-4">\n  <h1 data-placeholder="name">{{name}}</h1>\n  <h3 data-placeholder="city">{{city}}</h3>\n  <p data-placeholder="message">{{message}}</p>\n</div>'
-      };
-      localStorage.setItem('gjs-templates', JSON.stringify([defaultTemplate]));
-      setTemplates([defaultTemplate]);
-      setSelected(defaultTemplate.name);
-    } else {
-      setTemplates(saved);
-      setSelected(saved[0].name);
-    }
+    const fetchTemplates = async () => {
+      try {
+        const response = await fetch('/api/templates');
+        const data = await response.json();
+        if (data.length === 0) {
+          setTemplates(['Default']);
+          setSelected('Default');
+          setTemplateHTML(
+            '<div class="text-center p-4">\n  <h1 data-placeholder="name">{{name}}</h1>\n  <h3 data-placeholder="city">{{city}}</h3>\n  <p data-placeholder="message">{{message}}</p>\n</div>'
+          );
+        } else {
+          setTemplates(data);
+          setSelected(data[0]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch templates:', err);
+      }
+    };
+    fetchTemplates();
   }, []);
 
-  // Apply template HTML
+  // Load selected template HTML
   useEffect(() => {
-    const tmpl = templates.find(t => t.name === selected);
-    if (tmpl && displayRef.current) {
-      displayRef.current.innerHTML = tmpl.html;
+    if (!selected) return;
+    const fetchTemplate = async () => {
+      try {
+        const response = await fetch(`/api/templates/${selected}`);
+        const data = await response.json();
+        setTemplateHTML(data.html || '');
+      } catch (err) {
+        console.error('Failed to load template:', err);
+      }
+    };
+    fetchTemplate();
+  }, [selected]);
+
+  // Apply template HTML to the DOM
+  useEffect(() => {
+    if (displayRef.current) {
+      displayRef.current.innerHTML = templateHTML;
     }
-  }, [selected, templates]);
+  }, [templateHTML]);
 
   // Update runner info in template
   useEffect(() => {
@@ -58,7 +79,7 @@ export default function RunnerDisplay() {
         }
       }
     });
-  }, [runner, selected]);
+  }, [runner, templateHTML]);
 
   // Stream timing data
   useEffect(() => {
@@ -82,7 +103,7 @@ export default function RunnerDisplay() {
           <h5>Display Settings</h5>
           <select className="form-select mb-3" value={selected} onChange={e => setSelected(e.target.value)}>
             {templates.map(t => (
-              <option key={t.name} value={t.name}>{t.name}</option>
+              <option key={t} value={t}>{t}</option>
             ))}
           </select>
           <Link to="/builder" className="btn btn-secondary w-100">Open Builder</Link>
