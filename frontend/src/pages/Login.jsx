@@ -30,21 +30,42 @@ export default function Login() {
   };
 
   return (
-    <div className="container p-4">
-      <h2>Race Display Login</h2>
-      <form onSubmit={handleSubmit} className="mb-3">
-        <div className="mb-2">
-          <input className="form-control" placeholder="User ID" value={userId} onChange={e => setUserId(e.target.value)} required />
+    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
+      <form onSubmit={handleSubmit} className="rd-form">
+        <h2 className="mb-4">Race Display Login</h2>
+        <div className="rd-form-control">
+          <input
+            className="rd-input"
+            placeholder="User ID"
+            value={userId}
+            onChange={e => setUserId(e.target.value)}
+            required
+          />
         </div>
-        <div className="mb-2">
-          <input className="form-control" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required />
+        <div className="rd-form-control">
+          <input
+            className="rd-input"
+            placeholder="Password"
+            type="password"
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            required
+          />
         </div>
-        <div className="mb-2">
-          <input className="form-control" placeholder="Event ID" value={eventId} onChange={e => setEventId(e.target.value)} required />
+        <div className="rd-form-control">
+          <input
+            className="rd-input"
+            placeholder="Event ID"
+            value={eventId}
+            onChange={e => setEventId(e.target.value)}
+            required
+          />
         </div>
-        <button className="btn btn-primary" type="submit">Login</button>
+        <div className="rd-button-group">
+          <button className="rd-button" type="submit">Login</button>
+        </div>
+        {status && <div className="rd-alert">{status}</div>}
       </form>
-      {status && <div className="alert alert-info">{status}</div>}
     </div>
   );
 }
