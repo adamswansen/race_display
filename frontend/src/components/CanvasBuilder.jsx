@@ -73,18 +73,7 @@ const EDITOR_CONFIG = {
     upload: '/api/upload-image',
     uploadName: 'files',
     uploadPath: '/static/uploads/',
-    assets: [
-      {
-        type: 'image',
-        src: '/static/uploads/SRS_black_bg_noword.png',
-        name: 'SRS Logo'
-      },
-      {
-        type: 'image',
-        src: '/static/uploads/iRunTheD.jpg',
-        name: 'iRunTheD'
-      }
-    ]
+    assets: []
   },
   styleManager: {
     appendTo: '#style',
@@ -140,33 +129,13 @@ const EDITOR_CONFIG = {
         content: '<span data-placeholder="city">{{city}}</span>',
       },
       {
-        id: 'srs-logo',
-        label: 'SRS Logo',
-        content: '<img src="/static/uploads/SRS_black_bg_noword.png" alt="SRS Logo" style="max-width: 100%; height: auto;" />',
-        category: 'Images',
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag SRS Logo'
-        }
-      },
-      {
-        id: 'irun-logo',
-        label: 'iRun Logo',
-        content: '<img src="/static/uploads/iRunTheD.jpg" alt="iRun Logo" style="max-width: 100%; height: auto;" />',
-        category: 'Images',
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag iRun Logo'
-        }
-      },
-      {
         id: 'image',
-        label: 'Custom Image',
-        content: '<img src="" alt="Custom Image" style="max-width: 100%; height: auto;" />',
+        label: 'Image',
+        content: { type: 'image' },
         category: 'Images',
         attributes: {
           class: 'gjs-block',
-          title: 'Drag Custom Image'
+          title: 'Drag Image'
         }
       },
       {
@@ -268,18 +237,7 @@ export default function CanvasBuilder() {
           upload: '/api/upload-image',
           uploadName: 'files',
           uploadPath: '/static/uploads/',
-          assets: [
-            {
-              type: 'image',
-              src: '/static/uploads/SRS_black_bg_noword.png',
-              name: 'SRS Logo'
-            },
-            {
-              type: 'image',
-              src: '/static/uploads/iRunTheD.jpg',
-              name: 'iRunTheD'
-            }
-          ]
+          assets: []
         },
         styleManager: {
           appendTo: '#style',
@@ -335,33 +293,13 @@ export default function CanvasBuilder() {
               content: '<span data-placeholder="city">{{city}}</span>',
             },
             {
-              id: 'srs-logo',
-              label: 'SRS Logo',
-              content: '<img src="/static/uploads/SRS_black_bg_noword.png" alt="SRS Logo" style="max-width: 100%; height: auto;" />',
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag SRS Logo'
-              }
-            },
-            {
-              id: 'irun-logo',
-              label: 'iRun Logo',
-              content: '<img src="/static/uploads/iRunTheD.jpg" alt="iRun Logo" style="max-width: 100%; height: auto;" />',
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag iRun Logo'
-              }
-            },
-            {
               id: 'image',
-              label: 'Custom Image',
-              content: '<img src="" alt="Custom Image" style="max-width: 100%; height: auto;" />',
+              label: 'Image',
+              content: { type: 'image' },
               category: 'Images',
               attributes: {
                 class: 'gjs-block',
-                title: 'Drag Custom Image'
+                title: 'Drag Image'
               }
             },
             {
