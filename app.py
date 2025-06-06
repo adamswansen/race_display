@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, jsonify, Response, send_from_directory
+from flask_cors import CORS
 import os
 import socketserver
 import threading
@@ -24,6 +25,7 @@ from urllib.parse import urljoin, urlparse
 import logging
 
 app = Flask(__name__, static_folder='static')
+CORS(app)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -297,6 +299,24 @@ class TimingHandler(socketserver.StreamRequestHandler):
                 self.write_command("ack", "ping")
                 continue
 
+            # Handle initialization acknowledgments
+            if line.startswith('ack~'):
+                parts = line.split('~')
+                if len(parts) >= 2:
+                    ack_type = parts[1]
+                    if ack_type == 'init':
+                        # Accept any ack~init response
+                        continue
+                    elif ack_type == 'geteventinfo':
+                        # Accept event info response
+                        continue
+                    elif ack_type == 'getlocations':
+                        # Accept locations response
+                        continue
+                    elif ack_type == 'start':
+                        # Accept start acknowledgment
+                        continue
+
             # Process timing data
             processed_data = process_timing_data(line)
             if processed_data:
@@ -565,7 +585,11 @@ def stream():
                 # Send keepalive message if no data
                 yield f"data: {json.dumps({'keepalive': True})}\n\n"
     
-    return Response(generate(), mimetype='text/event-stream')
+    response = Response(generate(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 def is_valid_url(url):
     """Validate URL format and security"""
