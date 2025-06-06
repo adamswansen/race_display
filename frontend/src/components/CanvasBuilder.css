@@ -136,6 +136,12 @@
 }
 
 /* Style manager improvements */
+.gjs-sm-sectors {
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
+}
+
 .gjs-sm-sector {
   margin-bottom: var(--spacing-sm);
 }

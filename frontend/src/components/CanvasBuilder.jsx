@@ -74,26 +74,6 @@ const EDITOR_CONFIG = {
           keyWidth: 'flex-basis',
           keyHeight: 'height',
         },
-      },
-      {
-        id: 'panel-switcher',
-        el: '.panel__switcher',
-        buttons: [
-          {
-            id: 'show-layers',
-            active: true,
-            label: 'Layers',
-            command: 'show-layers',
-            togglable: false,
-          },
-          {
-            id: 'show-style',
-            active: true,
-            label: 'Styles',
-            command: 'show-styles',
-            togglable: false,
-          }
-        ],
       }
     ]
   },
@@ -165,20 +145,18 @@ const EDITOR_CONFIG = {
         id: 'image',
         label: 'Image',
         content: { type: 'image' },
-        category: 'Images',
         attributes: {
           class: 'gjs-block',
           title: 'Drag Image'
         }
       },
       {
-        id: 'background',
-        label: 'Background',
-        content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
-        category: 'Layout',
+        id: 'custom-message',
+        label: 'Custom Message',
+        content: '<span data-placeholder="message">{{message}}</span>',
         attributes: {
           class: 'gjs-block',
-          title: 'Drag Background'
+          title: 'Drag Custom Message'
         }
       }
     ]
@@ -372,11 +350,7 @@ export default function CanvasBuilder() {
           const container = root.append(`
             <div class="layout-root" 
                  style="position:relative;width:100%;height:100%;
-                        display:flex;align-items:center;justify-content:center;
-                        border:2px dashed #ccc;">
-              <span style="color:#888;font-size:1.1rem;">
-                Drop or click ＋ to add elements
-              </span>
+                        display:flex;align-items:center;justify-content:center;">
             </div>
           `)[0];
           
@@ -528,17 +502,6 @@ export default function CanvasBuilder() {
         <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('open-assets')}>Images</button>
         <button className="btn btn-secondary me-2" onClick={() => editorRef.current.runCommand('fullscreen')}>Fullscreen</button>
         <button className="btn btn-primary me-2" onClick={() => editorRef.current.runCommand('save-template')}>Save Template</button>
-        <div className="btn-group me-2">
-          <button className="btn btn-outline-secondary" onClick={() => editorRef.current.runCommand('align-left')} title="Align Left">
-            ←
-          </button>
-          <button className="btn btn-outline-secondary" onClick={() => editorRef.current.runCommand('align-center')} title="Align Center">
-            ↔
-          </button>
-          <button className="btn btn-outline-secondary" onClick={() => editorRef.current.runCommand('align-right')} title="Align Right">
-            →
-          </button>
-        </div>
         <select className="form-select d-inline w-auto" onChange={handleLoad}>
           <option value="">Load Template...</option>
           {templates.map(t => (
@@ -550,7 +513,6 @@ export default function CanvasBuilder() {
         <div id="blocks" className="canvas-builder__blocks"></div>
         <div id="gjs" className="canvas-builder__editor"></div>
         <div className="canvas-builder__right-panel">
-          <div className="panel__switcher"></div>
           <div className="panel__right"></div>
           <div id="style" className="canvas-builder__styles"></div>
         </div>
