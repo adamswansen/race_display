@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 export default function Login() {
@@ -6,11 +6,31 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [eventId, setEventId] = useState('');
   const [status, setStatus] = useState('');
+  const [progress, setProgress] = useState({ loaded: 0, total: 0 });
+  const pollRef = useRef(null);
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus('Connecting...');
+    setProgress({ loaded: 0, total: 0 });
+
+    const fetchProgress = async () => {
+      try {
+        const res = await fetch('/api/login-progress');
+        if (res.ok) {
+          const p = await res.json();
+          setProgress({ loaded: p.loaded_entries, total: p.total_entries });
+          if (p.complete && pollRef.current) {
+            clearInterval(pollRef.current);
+            pollRef.current = null;
+          }
+        }
+      } catch (_) {
+        // ignore polling errors
+      }
+    };
+    pollRef.current = setInterval(fetchProgress, 500);
     const formData = new FormData();
     formData.append('user_id', userId);
     formData.append('password', password);
@@ -26,6 +46,11 @@ export default function Login() {
       }
     } catch (err) {
       setStatus('Network error');
+    } finally {
+      if (pollRef.current) {
+        clearInterval(pollRef.current);
+        pollRef.current = null;
+      }
     }
   };
 
@@ -65,6 +90,18 @@ export default function Login() {
           <button className="rd-button" type="submit">Login</button>
         </div>
         {status && <div className="rd-alert">{status}</div>}
+        {progress.total > 0 && (
+          <div className="progress mt-2" style={{ width: '100%' }}>
+            <div
+              className="progress-bar"
+              role="progressbar"
+              style={{ width: `${(progress.loaded / progress.total) * 100}%` }}
+              aria-valuenow={progress.loaded}
+              aria-valuemin="0"
+              aria-valuemax={progress.total}
+            >{`${progress.loaded}/${progress.total}`}</div>
+          </div>
+        )}
       </form>
     </div>
   );

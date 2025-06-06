@@ -46,6 +46,13 @@ listeners_started = False
 # Add to global variables
 AUTH_SECRETS = {}  # Store connection-specific secrets
 
+# Track progress while loading roster data
+login_progress = {
+    'total_entries': 0,
+    'loaded_entries': 0,
+    'complete': False
+}
+
 # Directories for saved templates and uploaded images
 TEMPLATE_DIR = os.path.join(app.root_path, 'saved_templates')
 UPLOAD_DIR = os.path.join(app.static_folder, 'uploads')
@@ -131,9 +138,16 @@ def fetch_roster_page(event_id, credentials, page=1):
 
 def fetch_complete_roster(event_id, credentials):
     """Fetch all pages of roster data"""
-    global roster_data, race_name
+    global roster_data, race_name, login_progress
     roster_data = {}
-    
+
+    # Reset progress tracking
+    login_progress = {
+        'total_entries': 0,
+        'loaded_entries': 0,
+        'complete': False
+    }
+
     # Fetch first page to get total pages
     data, headers = fetch_roster_page(event_id, credentials, page=1)
     if not data:
@@ -142,6 +156,7 @@ def fetch_complete_roster(event_id, credentials):
     # Get pagination info from headers
     total_pages = int(headers.get('X-Ctlive-Page-Count', 1))
     total_rows = int(headers.get('X-Ctlive-Row-Count', 0))
+    login_progress['total_entries'] = total_rows
     print(f"Total entries to fetch: {total_rows} across {total_pages} pages")
     
     # Process first page
@@ -174,6 +189,7 @@ def fetch_complete_roster(event_id, credentials):
             # Store race name (we'll get it from the first entry)
             if race_name is None:
                 race_name = entry.get('race_name', '')
+            login_progress['loaded_entries'] += 1
     
     # Fetch remaining pages
     for page in range(2, total_pages + 1):
@@ -205,11 +221,14 @@ def fetch_complete_roster(event_id, credentials):
                         'entry_id': entry.get('entry_id', ''),
                         'athlete_id': entry.get('athlete_id', '')
                     }
+                    login_progress['loaded_entries'] += 1
     
     print(f"Total runners loaded: {len(roster_data)}")
     if len(roster_data) != total_rows:
         print(f"Warning: Expected {total_rows} entries but loaded {len(roster_data)}")
-    
+
+    login_progress['complete'] = True
+
     return True
 
 def generate_auth_seed():
@@ -529,6 +548,11 @@ def login():
     
     return jsonify(response)
 
+@app.route('/api/login-progress')
+def get_login_progress():
+    """Return current roster loading progress"""
+    return jsonify(login_progress)
+
 @app.route('/stream')
 def stream():
     def generate():
@@ -723,5 +747,6 @@ if __name__ == '__main__':
         debug=SERVER_CONFIG['DEBUG'],
         host=SERVER_CONFIG['HOST'],
         port=SERVER_CONFIG['PORT'],
-        use_reloader=False
+        use_reloader=False,
+        threaded=True
     )
