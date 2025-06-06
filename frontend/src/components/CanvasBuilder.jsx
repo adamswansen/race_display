@@ -55,7 +55,8 @@ const EDITOR_CONFIG = {
     customBadgeLabel: false,
     enableSelection: true,
     enableDragging: true,
-    enableResizing: true
+    enableResizing: true,
+    dragMode: 'absolute'
   },
   layerManager: {
     appendTo: '.layers-container'
@@ -208,7 +209,11 @@ const configureBlock = (block) => {
       class: 'gjs-block',
       title: block.attributes?.title || 'Drag to add'
     },
-    style: { position: 'absolute', cursor: 'move' }
+    style: { 
+      position: 'absolute', 
+      cursor: 'move',
+      'user-select': 'none'
+    }
   };
 };
 
@@ -220,149 +225,11 @@ export default function CanvasBuilder() {
   useEffect(() => {
     if (!editorRef.current) {
       const editor = grapesjs.init({
-        container: '#gjs',
-        height: '600px',
-        storageManager: false,
-        deviceManager: {
-          devices: [
-            {
-              name: 'Desktop',
-              width: '',
-            },
-            {
-              name: 'Mobile',
-              width: '320px',
-              widthMedia: '480px',
-            }
-          ]
-        },
-        canvas: {
-          styles: [
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
-          ],
-          scripts: [
-            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
-          ]
-        },
-        layerManager: {
-          appendTo: '.layers-container'
-        },
-        panels: {
-          defaults: [
-            {
-              id: 'layers',
-              el: '.panel__right',
-              resizable: {
-                tc: 0,
-                cr: 1,
-                cl: 0,
-                bc: 0,
-                keyWidth: 'flex-basis',
-                keyHeight: 'height',
-              },
-            },
-            {
-              id: 'panel-switcher',
-              el: '.panel__switcher',
-              buttons: [
-                {
-                  id: 'show-layers',
-                  active: true,
-                  label: 'Layers',
-                  command: 'show-layers',
-                  togglable: false,
-                },
-                {
-                  id: 'show-style',
-                  active: true,
-                  label: 'Styles',
-                  command: 'show-styles',
-                  togglable: false,
-                }
-              ],
-            }
-          ]
-        },
-        assetManager: {
-          upload: '/api/upload-image',
-          uploadName: 'files',
-          uploadPath: '/static/uploads/',
-          assets: []
-        },
-        styleManager: {
-          appendTo: '#style',
-          sectors: [
-            {
-              name: 'Dimension',
-              open: false,
-              buildProps: ['width', 'height', 'min-width', 'min-height', 'padding', 'margin'],
-            },
-            {
-              name: 'Typography',
-              open: false,
-              buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration', 'text-shadow'],
-            },
-            {
-              name: 'Decorations',
-              open: false,
-              buildProps: ['border-radius', 'border', 'box-shadow', 'background'],
-            },
-            {
-              name: 'Extra',
-              open: false,
-              buildProps: ['opacity', 'transition', 'transform'],
-            },
-            {
-              name: 'Position',
-              open: false,
-              buildProps: ['position', 'top', 'right', 'left', 'bottom', 'z-index'],
-            },
-            {
-              name: 'Alignment',
-              open: false,
-              buildProps: ['display', 'flex-direction', 'justify-content', 'align-items', 'text-align'],
-            }
-          ]
-        },
+        ...EDITOR_CONFIG,
+        dragMode: 'absolute',
         blockManager: {
-          appendTo: '#blocks',
-          blocks: [
-            {
-              id: 'bib',
-              label: 'Bib Number',
-              content: '<span data-placeholder="bib">{{bib}}</span>',
-            },
-            {
-              id: 'name',
-              label: 'Name',
-              content: '<span data-placeholder="name">{{name}}</span>',
-            },
-            {
-              id: 'city',
-              label: 'City/State',
-              content: '<span data-placeholder="city">{{city}}</span>',
-            },
-            {
-              id: 'image',
-              label: 'Image',
-              content: { type: 'image' },
-              category: 'Images',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag Image'
-              }
-            },
-            {
-              id: 'background',
-              label: 'Background',
-              content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
-              category: 'Layout',
-              attributes: {
-                class: 'gjs-block',
-                title: 'Drag Background'
-              }
-            }
-          ]
+          ...EDITOR_CONFIG.blockManager,
+          blocks: EDITOR_CONFIG.blockManager.blocks.map(configureBlock)
         }
       });
       editorRef.current = editor;
@@ -408,9 +275,26 @@ export default function CanvasBuilder() {
           },
           style: {
             position: 'absolute',
-            cursor: 'move'
+            cursor: 'move',
+            'user-select': 'none'
           }
         });
+
+        // Add drag handles
+        component.set('traits', [
+          {
+            type: 'number',
+            name: 'top',
+            label: 'Top',
+            default: 0,
+          },
+          {
+            type: 'number',
+            name: 'left',
+            label: 'Left',
+            default: 0,
+          }
+        ]);
       });
 
       // Register custom commands
@@ -517,13 +401,17 @@ export default function CanvasBuilder() {
         }
 
         // Ensure body takes full height and allows dragging
-        const body = editor.getDocument().body;
-        if (body) {
-          body.style.minHeight = '100%';
-          body.style.height = '100%';
-          body.style.margin = '0';
-          body.style.padding = '0';
-          body.style.position = 'relative';
+        try {
+          const doc = editor.getDocument();
+          if (doc && doc.body) {
+            doc.body.style.minHeight = '100%';
+            doc.body.style.height = '100%';
+            doc.body.style.margin = '0';
+            doc.body.style.padding = '0';
+            doc.body.style.position = 'relative';
+          }
+        } catch (error) {
+          console.warn('Could not access editor document:', error);
         }
       });
     }
@@ -567,7 +455,8 @@ export default function CanvasBuilder() {
     
     // Add custom styles for drag handles
     m.addStyle({
-      'cursor': 'move'
+      'cursor': 'move',
+      'user-select': 'none'
     });
   };
 

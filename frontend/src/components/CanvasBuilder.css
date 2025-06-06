@@ -174,3 +174,72 @@
     grid-template-columns: 180px 1fr 220px;
   }
 }
+
+/* Hide GrapesJS header bar and borders */
+.gjs-frame-wrapper__top,
+.gjs-frame-wrapper__right,
+.gjs-frame-wrapper__bottom,
+.gjs-frame-wrapper__left {
+  display: none !important;
+}
+
+/* Make iframe take up all space */
+.gjs-frame-wrapper {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.gjs-frame {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+/* Ensure editor container takes full height */
+#gjs {
+  position: relative !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: none !important;
+}
+
+/* Make GrapesJS editor fill entire parent */
+.gjs-editor {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+}
+
+/* Make canvas fill entire editor */
+.gjs-cv-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Remove any toolbar or header spacing */
+.gjs-toolbar,
+.gjs-toolbar-items {
+  display: none !important;
+}
+
+/* Ensure no background or borders show through */
+.gjs-editor,
+.gjs-cv-canvas {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}
