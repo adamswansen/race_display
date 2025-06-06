@@ -3,6 +3,13 @@ import grapesjs from 'grapesjs';
 import 'grapesjs/dist/css/grapes.min.css';
 import './CanvasBuilder.css';
 
+// Add custom CSS to hide the panel
+const customStyles = `
+  .panel__right.gjs-pn-panel.gjs-pn-layers {
+    display: none !important;
+  }
+`;
+
 // Constants for editor configuration
 const EDITOR_CONFIG = {
   container: '#gjs',
@@ -59,21 +66,22 @@ const EDITOR_CONFIG = {
     dragMode: 'absolute'
   },
   layerManager: {
-    appendTo: '.layers-container'
+    appendTo: '.layers-container',
+    container: '.panel__right',
+    wrapper: false,
+    panel: false
   },
   panels: {
     defaults: [
       {
         id: 'layers',
         el: '.panel__right',
-        resizable: {
-          tc: 0, // Top handler
-          cr: 1, // Right handler
-          cl: 0, // Left handler
-          bc: 0, // Bottom handler
-          keyWidth: 'flex-basis',
-          keyHeight: 'height',
-        },
+        buttons: [],
+        appendTo: '.panel__right',
+        visible: true,
+        header: false,
+        resizable: false,
+        panel: false
       }
     ]
   },
@@ -211,6 +219,23 @@ export default function CanvasBuilder() {
         }
       });
       editorRef.current = editor;
+
+      // Inject custom styles
+      const styleEl = document.createElement('style');
+      styleEl.textContent = customStyles;
+      document.head.appendChild(styleEl);
+
+      // Remove the panel after initialization
+      const removePanel = () => {
+        const panel = document.querySelector('.panel__right.gjs-pn-panel.gjs-pn-layers');
+        if (panel) {
+          panel.remove();
+        }
+      };
+      
+      // Remove panel immediately and after a short delay to ensure it's gone
+      removePanel();
+      setTimeout(removePanel, 100);
 
       // Add Page Background sector and configure wrapper
       const wrapper = editor.getWrapper();
