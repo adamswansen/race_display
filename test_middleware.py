@@ -45,8 +45,13 @@ def simulate_middleware():
                     print(f"Got ack: {ack.strip()}")
                     
                     # Send test timing data
-                    bib = str(random.randint(333, 337))  # Known good bibs
-                    timestamp = time.strftime('%H:%M:%S.%f')[:-4]
+                    bib = str(random.randint(100, 1337))  # Known good bibs
+                    # Format timestamp as HH:MM:SS.mmm
+                    current_time = time.time()
+                    timestamp = time.strftime('%H:%M:%S', time.localtime(current_time))
+                    milliseconds = int((current_time % 1) * 1000)
+                    timestamp = f"{timestamp}.{milliseconds:03d}"
+                    
                     timing_data = f"CT01_33~{sequence}~FINISH~{bib}~{timestamp}~0~TAG123~1\r\n"
                     s.send(timing_data.encode('utf-8'))
                     print(f"Sent timing data: {timing_data.strip()}")

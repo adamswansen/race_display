@@ -100,13 +100,7 @@ const EDITOR_CONFIG = {
     upload: '/api/upload-image',
     uploadName: 'files',
     uploadPath: '/static/uploads/',
-    assets: [
-      {
-        type: 'image',
-        src: '/static/uploads/SRS_black_bg_noword.png',
-        name: 'SRS Logo'
-      }
-    ]
+    assets: []
   },
   styleManager: {
     appendTo: '#style',
@@ -167,33 +161,23 @@ const EDITOR_CONFIG = {
         content: '<span data-placeholder="city">{{city}}</span>',
       },
       {
-        id: 'srs-logo',
-        label: 'SRS Logo',
-        content: '<img src="/static/uploads/SRS_black_bg_noword.png" alt="SRS Logo" style="max-width: 100%; height: auto;" />',
-        category: 'Images',
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag SRS Logo'
-        }
-      },
-      {
-        id: 'irun-logo',
-        label: 'iRun Logo',
-        content: '<img src="/static/uploads/iRunTheD.jpg" alt="iRun Logo" style="max-width: 100%; height: auto;" />',
-        category: 'Images',
-        attributes: {
-          class: 'gjs-block',
-          title: 'Drag iRun Logo'
-        }
-      },
-      {
         id: 'image',
-        label: 'Custom Image',
-        content: '<img src="" alt="Custom Image" style="max-width: 100%; height: auto;" />',
+        label: 'Image',
+        content: { type: 'image' },
         category: 'Images',
         attributes: {
           class: 'gjs-block',
-          title: 'Drag Custom Image'
+          title: 'Drag Image'
+        }
+      },
+      {
+        id: 'background',
+        label: 'Background',
+        content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
+        category: 'Layout',
+        attributes: {
+          class: 'gjs-block',
+          title: 'Drag Background'
         }
       }
     ]
@@ -236,11 +220,149 @@ export default function CanvasBuilder() {
   useEffect(() => {
     if (!editorRef.current) {
       const editor = grapesjs.init({
-        ...EDITOR_CONFIG,
-        dragMode: 'absolute',
+        container: '#gjs',
+        height: '600px',
+        storageManager: false,
+        deviceManager: {
+          devices: [
+            {
+              name: 'Desktop',
+              width: '',
+            },
+            {
+              name: 'Mobile',
+              width: '320px',
+              widthMedia: '480px',
+            }
+          ]
+        },
+        canvas: {
+          styles: [
+            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css'
+          ],
+          scripts: [
+            'https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js'
+          ]
+        },
+        layerManager: {
+          appendTo: '.layers-container'
+        },
+        panels: {
+          defaults: [
+            {
+              id: 'layers',
+              el: '.panel__right',
+              resizable: {
+                tc: 0,
+                cr: 1,
+                cl: 0,
+                bc: 0,
+                keyWidth: 'flex-basis',
+                keyHeight: 'height',
+              },
+            },
+            {
+              id: 'panel-switcher',
+              el: '.panel__switcher',
+              buttons: [
+                {
+                  id: 'show-layers',
+                  active: true,
+                  label: 'Layers',
+                  command: 'show-layers',
+                  togglable: false,
+                },
+                {
+                  id: 'show-style',
+                  active: true,
+                  label: 'Styles',
+                  command: 'show-styles',
+                  togglable: false,
+                }
+              ],
+            }
+          ]
+        },
+        assetManager: {
+          upload: '/api/upload-image',
+          uploadName: 'files',
+          uploadPath: '/static/uploads/',
+          assets: []
+        },
+        styleManager: {
+          appendTo: '#style',
+          sectors: [
+            {
+              name: 'Dimension',
+              open: false,
+              buildProps: ['width', 'height', 'min-width', 'min-height', 'padding', 'margin'],
+            },
+            {
+              name: 'Typography',
+              open: false,
+              buildProps: ['font-family', 'font-size', 'font-weight', 'letter-spacing', 'color', 'line-height', 'text-align', 'text-decoration', 'text-shadow'],
+            },
+            {
+              name: 'Decorations',
+              open: false,
+              buildProps: ['border-radius', 'border', 'box-shadow', 'background'],
+            },
+            {
+              name: 'Extra',
+              open: false,
+              buildProps: ['opacity', 'transition', 'transform'],
+            },
+            {
+              name: 'Position',
+              open: false,
+              buildProps: ['position', 'top', 'right', 'left', 'bottom', 'z-index'],
+            },
+            {
+              name: 'Alignment',
+              open: false,
+              buildProps: ['display', 'flex-direction', 'justify-content', 'align-items', 'text-align'],
+            }
+          ]
+        },
         blockManager: {
-          ...EDITOR_CONFIG.blockManager,
-          blocks: EDITOR_CONFIG.blockManager.blocks.map(configureBlock)
+          appendTo: '#blocks',
+          blocks: [
+            {
+              id: 'bib',
+              label: 'Bib Number',
+              content: '<span data-placeholder="bib">{{bib}}</span>',
+            },
+            {
+              id: 'name',
+              label: 'Name',
+              content: '<span data-placeholder="name">{{name}}</span>',
+            },
+            {
+              id: 'city',
+              label: 'City/State',
+              content: '<span data-placeholder="city">{{city}}</span>',
+            },
+            {
+              id: 'image',
+              label: 'Image',
+              content: { type: 'image' },
+              category: 'Images',
+              attributes: {
+                class: 'gjs-block',
+                title: 'Drag Image'
+              }
+            },
+            {
+              id: 'background',
+              label: 'Background',
+              content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
+              category: 'Layout',
+              attributes: {
+                class: 'gjs-block',
+                title: 'Drag Background'
+              }
+            }
+          ]
         }
       });
       editorRef.current = editor;

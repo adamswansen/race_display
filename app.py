@@ -287,12 +287,17 @@ class TimingHandler(socketserver.StreamRequestHandler):
 
 def monitor_data_feed():
     """Start the TCP server"""
-    server = socketserver.ThreadingTCPServer(
-        (PROTOCOL_CONFIG['HOST'], PROTOCOL_CONFIG['PORT']), 
-        TimingHandler
-    )
-    print(f"Server listening on port {PROTOCOL_CONFIG['PORT']}")
-    server.serve_forever()
+    print(f"Starting TCP server on {PROTOCOL_CONFIG['HOST']}:{PROTOCOL_CONFIG['PORT']}")
+    try:
+        server = socketserver.ThreadingTCPServer(
+            (PROTOCOL_CONFIG['HOST'], PROTOCOL_CONFIG['PORT']), 
+            TimingHandler
+        )
+        print(f"Server listening on port {PROTOCOL_CONFIG['PORT']}")
+        server.serve_forever()
+    except Exception as e:
+        print(f"Error in TCP server: {e}")
+        raise
 
 def start_listeners():
     """Start TCP listener"""
@@ -306,8 +311,9 @@ def start_listeners():
         try:
             # Start TCP listener
             tcp_thread = threading.Thread(target=monitor_data_feed)
-            tcp_thread.daemon = True
+            tcp_thread.daemon = False  # Make it a non-daemon thread
             tcp_thread.start()
+            print("TCP server thread started")
             
             listeners_started = True
             return True
