@@ -5,6 +5,10 @@
   background-color: var(--color-grey-light);
 }
 
+:root {
+  --gjs-primary-color: #202e44;
+}
+
 .layout-root {
   position: relative;
 }
