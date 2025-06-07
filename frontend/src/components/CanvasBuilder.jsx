@@ -214,8 +214,49 @@ export default function CanvasBuilder() {
         ...EDITOR_CONFIG,
         dragMode: 'absolute',
         blockManager: {
-          ...EDITOR_CONFIG.blockManager,
-          blocks: EDITOR_CONFIG.blockManager.blocks.map(configureBlock)
+          appendTo: '#blocks',
+          blocks: [
+            {
+              id: 'bib',
+              label: 'Bib Number',
+              content: '<span data-placeholder="bib">{{bib}}</span>',
+            },
+            {
+              id: 'name',
+              label: 'Name',
+              content: '<span data-placeholder="name">{{name}}</span>',
+            },
+            {
+              id: 'city',
+              label: 'City/State',
+              content: '<span data-placeholder="city">{{city}}</span>',
+            },
+            {
+              id: 'custom-message',
+              label: 'Custom Message',
+              content: '<span data-placeholder="custom_message">{{custom_message}}</span>',
+            },
+            {
+              id: 'image',
+              label: 'Image',
+              content: { type: 'image' },
+              category: 'Images',
+              attributes: {
+                class: 'gjs-block',
+                title: 'Drag Image'
+              }
+            },
+            {
+              id: 'background',
+              label: 'Background',
+              content: '<div style="min-height:100px; background-image:url(\'\'); background-size: cover; background-position: center;"></div>',
+              category: 'Layout',
+              attributes: {
+                class: 'gjs-block',
+                title: 'Drag Background'
+              }
+            }
+          ]
         }
       });
       editorRef.current = editor;
@@ -441,6 +482,9 @@ export default function CanvasBuilder() {
     add('align-l', 'align-left', 'L');
     add('align-c', 'align-center', 'C');
     add('align-r', 'align-right', 'R');
+    if (m.getAttributes && m.getAttributes()['data-placeholder'] === 'custom_message') {
+      add('edit-msg', 'edit-custom-message', '✎');
+    }
     m.set('toolbar', tb);
     
     // Enable dragging and resizing
@@ -473,6 +517,18 @@ export default function CanvasBuilder() {
     });
     editor.Commands.add('align-right', {
       run(ed) { const s = ed.getSelected(); if (s) s.addStyle({ 'text-align': 'right' }); }
+    });
+    editor.Commands.add('edit-custom-message', {
+      run(ed) {
+        const s = ed.getSelected();
+        if (!s) return;
+        const attrs = s.getAttributes && s.getAttributes();
+        const current = attrs ? attrs['data-messages'] || '' : '';
+        const value = prompt('Custom messages (comma separated)', current);
+        if (value !== null) {
+          s.addAttributes({ 'data-messages': value });
+        }
+      }
     });
   };
 
