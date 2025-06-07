@@ -9,6 +9,8 @@ export default function RunnerDisplay() {
   const [templateHTML, setTemplateHTML] = useState('');
   const [showSettings, setShowSettings] = useState(false);
   const displayRef = useRef(null);
+  const customMessages = useRef([]);
+  const customIndex = useRef(0);
 
   // Load templates from the server
   useEffect(() => {
@@ -52,6 +54,15 @@ export default function RunnerDisplay() {
   useEffect(() => {
     if (displayRef.current) {
       displayRef.current.innerHTML = templateHTML;
+      const node = displayRef.current.querySelector('[data-placeholder="custom_message"]');
+      if (node) {
+        const msgs = node.getAttribute('data-messages') || '';
+        customMessages.current = msgs.split(',').map(m => m.trim()).filter(m => m);
+        customIndex.current = 0;
+      } else {
+        customMessages.current = [];
+        customIndex.current = 0;
+      }
     }
   }, [templateHTML]);
 
@@ -71,11 +82,20 @@ export default function RunnerDisplay() {
     // Update GrapesJS placeholders
     el.querySelectorAll('[data-placeholder]').forEach(node => {
       const key = node.getAttribute('data-placeholder');
-      if (key && runner[key] !== undefined) {
-        if (node.tagName === 'IMG') {
-          node.src = runner[key];
+      let value = runner[key];
+      if (key === 'custom_message') {
+        if (customMessages.current.length) {
+          value = customMessages.current[customIndex.current % customMessages.current.length];
+          customIndex.current += 1;
         } else {
-          node.textContent = runner[key] || '';
+          value = '';
+        }
+      }
+      if (value !== undefined) {
+        if (node.tagName === 'IMG') {
+          node.src = value;
+        } else {
+          node.textContent = value || '';
         }
       }
     });

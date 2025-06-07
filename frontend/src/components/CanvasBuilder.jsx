@@ -293,6 +293,11 @@ export default function CanvasBuilder() {
               content: '<span data-placeholder="city">{{city}}</span>',
             },
             {
+              id: 'custom-message',
+              label: 'Custom Message',
+              content: '<span data-placeholder="custom_message">{{custom_message}}</span>',
+            },
+            {
               id: 'image',
               label: 'Image',
               content: { type: 'image' },
@@ -432,6 +437,9 @@ export default function CanvasBuilder() {
     add('align-l', 'align-left', 'L');
     add('align-c', 'align-center', 'C');
     add('align-r', 'align-right', 'R');
+    if (m.getAttributes && m.getAttributes()['data-placeholder'] === 'custom_message') {
+      add('edit-msg', 'edit-custom-message', '✎');
+    }
     m.set('toolbar', tb);
     m.set('resizable', true);
   };
@@ -450,6 +458,18 @@ export default function CanvasBuilder() {
     });
     editor.Commands.add('align-right', {
       run(ed) { const s = ed.getSelected(); if (s) s.addStyle({ 'text-align': 'right' }); }
+    });
+    editor.Commands.add('edit-custom-message', {
+      run(ed) {
+        const s = ed.getSelected();
+        if (!s) return;
+        const attrs = s.getAttributes && s.getAttributes();
+        const current = attrs ? attrs['data-messages'] || '' : '';
+        const value = prompt('Custom messages (comma separated)', current);
+        if (value !== null) {
+          s.addAttributes({ 'data-messages': value });
+        }
+      }
     });
   };
 
