@@ -1,0 +1,261 @@
+.canvas-builder {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background-color: var(--color-grey-light);
+}
+
+:root {
+  --gjs-primary-color: #202e44;
+}
+
+.layout-root {
+  position: relative;
+}
+
+.canvas-builder__toolbar {
+  padding: var(--spacing-md);
+  background-color: var(--color-primary-contrast);
+  border-bottom: 1px solid var(--color-grey-main);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.canvas-builder__workspace {
+  display: grid;
+  grid-template-columns: 250px 1fr 300px;
+  gap: var(--spacing-md);
+  padding: var(--spacing-md);
+  height: calc(100vh - 70px);
+}
+
+.canvas-builder__blocks {
+  background-color: var(--color-primary-contrast);
+  border-radius: var(--spacing-xs);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow-y: auto;
+}
+
+.canvas-builder__editor {
+  background-color: var(--color-primary-contrast);
+  border-radius: var(--spacing-xs);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+}
+
+.canvas-builder__right-panel {
+  display: flex;
+  flex-direction: column;
+  background-color: var(--color-primary-contrast);
+  border-radius: var(--spacing-xs);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  overflow: hidden;
+  height: 100%;
+}
+
+.panel__switcher {
+  display: flex;
+  padding: var(--spacing-sm);
+  border-bottom: 1px solid var(--color-grey-main);
+  background-color: var(--color-grey-light);
+}
+
+.panel__switcher button {
+  padding: var(--spacing-xs) var(--spacing-sm);
+  margin-right: var(--spacing-xs);
+  border: 1px solid var(--color-grey-main);
+  background-color: var(--color-primary-contrast);
+  border-radius: var(--spacing-xs);
+  cursor: pointer;
+}
+
+.panel__switcher button.active {
+  background-color: var(--color-primary-main);
+  color: var(--color-primary-contrast);
+  border-color: var(--color-primary-main);
+}
+
+.panel__right {
+  display: none; /* Hide the original panel */
+}
+
+#style.canvas-builder__styles {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--spacing-sm);
+  height: 100%;
+}
+
+#gjs {
+  border: 1px solid var(--color-grey-main);
+  background-image: 
+    linear-gradient(0deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent),
+    linear-gradient(90deg, transparent 24%, rgba(0,0,0,0.05) 25%, rgba(0,0,0,0.05) 26%, transparent 27%, transparent 74%, rgba(0,0,0,0.05) 75%, rgba(0,0,0,0.05) 76%, transparent 77%, transparent);
+  background-size: 20px 20px;
+}
+
+/* GrapesJS specific styles */
+.gjs-block {
+  width: 100%;
+  height: auto;
+  min-height: 80px;
+  margin: 0;
+  padding: var(--spacing-sm);
+  border: 1px solid var(--color-grey-main);
+  border-radius: var(--spacing-xs);
+  background-color: var(--color-primary-contrast);
+  transition: all 0.2s ease;
+}
+
+.gjs-block:hover {
+  border-color: var(--color-primary-main);
+  box-shadow: 0 2px 4px rgba(0, 123, 255, 0.1);
+  transform: translateY(-2px);
+}
+
+.gjs-block img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.gjs-block-category {
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm);
+  background-color: var(--color-grey-light);
+  border-bottom: 1px solid var(--color-grey-main);
+}
+
+.gjs-block-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-grey-dark);
+  text-align: center;
+  margin-top: var(--spacing-xs);
+}
+
+.gjs-fullscreen {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 9999;
+  background-color: var(--color-primary-contrast);
+}
+
+/* Style manager improvements */
+.gjs-sm-sectors {
+  height: 100%;
+  overflow-y: auto;
+  padding-right: var(--spacing-sm);
+}
+
+.gjs-sm-sector {
+  margin-bottom: var(--spacing-sm);
+}
+
+.gjs-sm-sector-title {
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm);
+  background-color: var(--color-grey-light);
+  border-bottom: 1px solid var(--color-grey-main);
+  cursor: pointer;
+}
+
+.gjs-sm-properties {
+  padding: var(--spacing-sm);
+}
+
+.gjs-field {
+  margin-bottom: var(--spacing-xs);
+}
+
+.gjs-field-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-grey-dark);
+  margin-bottom: var(--spacing-xs);
+}
+
+/* Responsive adjustments */
+@media (max-width: 1200px) {
+  .canvas-builder__workspace {
+    grid-template-columns: 200px 1fr 250px;
+  }
+}
+
+@media (max-width: 992px) {
+  .canvas-builder__workspace {
+    grid-template-columns: 180px 1fr 220px;
+  }
+}
+
+/* Hide GrapesJS header bar and borders */
+.gjs-frame-wrapper__top,
+.gjs-frame-wrapper__right,
+.gjs-frame-wrapper__bottom,
+.gjs-frame-wrapper__left {
+  display: none !important;
+}
+
+/* Make iframe take up all space */
+.gjs-frame-wrapper {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.gjs-frame {
+  width: 100% !important;
+  height: 100% !important;
+  border: none !important;
+}
+
+/* Ensure editor container takes full height */
+#gjs {
+  position: relative !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: none !important;
+}
+
+/* Make GrapesJS editor fill entire parent */
+.gjs-editor {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: relative !important;
+}
+
+/* Make canvas fill entire editor */
+.gjs-cv-canvas {
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+}
+
+/* Remove any toolbar or header spacing */
+.gjs-toolbar,
+.gjs-toolbar-items {
+  display: none !important;
+}
+
+/* Ensure no background or borders show through */
+.gjs-editor,
+.gjs-cv-canvas {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+}

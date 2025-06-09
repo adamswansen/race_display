@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, jsonify, Response
+from flask import Flask, render_template, request, jsonify, Response, send_from_directory
+from flask_cors import CORS
+import os
 import socketserver
 import threading
 import queue
@@ -12,16 +14,21 @@ import requests
 from datetime import datetime
 from threading import Lock
 from config import (
-    RANDOM_MESSAGES, 
-    API_CONFIG, 
+    RANDOM_MESSAGES,
+    API_CONFIG,
     PROTOCOL_CONFIG,
     SERVER_CONFIG
 )
 from bs4 import BeautifulSoup
 import tinycss2
 from urllib.parse import urljoin, urlparse
+import logging
 
 app = Flask(__name__, static_folder='static')
+CORS(app)
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # Global variables
 roster_data = {}
@@ -40,6 +47,19 @@ listeners_started = False
 
 # Add to global variables
 AUTH_SECRETS = {}  # Store connection-specific secrets
+
+# Track progress while loading roster data
+login_progress = {
+    'total_entries': 0,
+    'loaded_entries': 0,
+    'complete': False
+}
+
+# Directories for saved templates and uploaded images
+TEMPLATE_DIR = os.path.join(app.root_path, 'saved_templates')
+UPLOAD_DIR = os.path.join(app.static_folder, 'uploads')
+os.makedirs(TEMPLATE_DIR, exist_ok=True)
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 def encode_password(password):
     """Encode password using SHA-1"""
@@ -65,7 +85,7 @@ def fetch_roster_page(event_id, credentials, page=1):
         'user_id': user_id,
         'user_pass': encoded_password,
         'page': page,
-        'size': 50,
+        'size': 100,  # Increased page size to reduce number of requests
         'include_test_entries': 'true',
         'elide_json': 'false'
     }
@@ -76,6 +96,7 @@ def fetch_roster_page(event_id, credentials, page=1):
     try:
         response = requests.get(url, params=params, timeout=10)
         print(f"API Response status: {response.status_code}")
+        print(f"API Response headers: {dict(response.headers)}")
         
         if response.status_code != 200:
             print(f"API Error: {response.text}")
@@ -84,12 +105,28 @@ def fetch_roster_page(event_id, credentials, page=1):
         response.raise_for_status()
         data = response.json()
         
-        if 'event_entry' in data and len(data['event_entry']) > 0:
+        # Validate response structure
+        if not isinstance(data, dict):
+            print(f"Invalid response format: expected dict, got {type(data)}")
+            return None, None
+            
+        if 'event_entry' not in data:
+            print(f"Missing 'event_entry' in response: {data}")
+            return None, None
+            
+        if not isinstance(data['event_entry'], list):
+            print(f"Invalid 'event_entry' format: expected list, got {type(data['event_entry'])}")
+            return None, None
+            
+        if len(data['event_entry']) > 0:
             print(f"Successfully fetched {len(data['event_entry'])} entries")
+            # Log first entry for debugging
+            print(f"First entry sample: {data['event_entry'][0]}")
         else:
             print(f"Response contained no entries. Response data: {data}")
             
         return data, response.headers
+        
     except requests.exceptions.RequestException as e:
         print(f"Request error: {e}")
         return None, None
@@ -103,30 +140,58 @@ def fetch_roster_page(event_id, credentials, page=1):
 
 def fetch_complete_roster(event_id, credentials):
     """Fetch all pages of roster data"""
-    global roster_data, race_name
+    global roster_data, race_name, login_progress
     roster_data = {}
-    
+
+    # Reset progress tracking
+    login_progress = {
+        'total_entries': 0,
+        'loaded_entries': 0,
+        'complete': False
+    }
+
     # Fetch first page to get total pages
-    data, headers = fetch_roster_page(event_id, credentials)
+    data, headers = fetch_roster_page(event_id, credentials, page=1)
     if not data:
         return False
     
+    # Get pagination info from headers
     total_pages = int(headers.get('X-Ctlive-Page-Count', 1))
-    print(f"Total pages to fetch: {total_pages}")
+    total_rows = int(headers.get('X-Ctlive-Row-Count', 0))
+    login_progress['total_entries'] = total_rows
+    print(f"Total entries to fetch: {total_rows} across {total_pages} pages")
     
     # Process first page
     for entry in data['event_entry']:
-        # Store only the fields we need
+        # Store all relevant runner information
         bib = entry.get('entry_bib')
+        if not bib:  # If no bib, use entry_id as fallback
+            bib = entry.get('entry_id')
+            
         if bib:
             roster_data[bib] = {
+                'name': entry.get('entry_name', ''),  # Full name
                 'first_name': entry.get('athlete_first_name', ''),
                 'last_name': entry.get('athlete_last_name', ''),
-                'city': entry.get('location_city', '')
+                'age': entry.get('entry_race_age', ''),
+                'gender': entry.get('athlete_sex', ''),
+                'city': entry.get('location_city', ''),
+                'state': entry.get('location_region', ''),
+                'country': entry.get('location_country', ''),
+                'division': entry.get('bracket_name', ''),  # Age group/division
+                'race_name': entry.get('race_name', ''),
+                'reg_choice': entry.get('reg_choice_name', ''),  # Race category
+                'wave': entry.get('wave_name', ''),
+                'team_name': entry.get('team_name', ''),
+                'entry_status': entry.get('entry_status', ''),
+                'entry_type': entry.get('entry_type', ''),
+                'entry_id': entry.get('entry_id', ''),
+                'athlete_id': entry.get('athlete_id', '')
             }
             # Store race name (we'll get it from the first entry)
             if race_name is None:
                 race_name = entry.get('race_name', '')
+            login_progress['loaded_entries'] += 1
     
     # Fetch remaining pages
     for page in range(2, total_pages + 1):
@@ -135,14 +200,37 @@ def fetch_complete_roster(event_id, credentials):
         if data:
             for entry in data['event_entry']:
                 bib = entry.get('entry_bib')
+                if not bib:  # If no bib, use entry_id as fallback
+                    bib = entry.get('entry_id')
+                    
                 if bib:
                     roster_data[bib] = {
+                        'name': entry.get('entry_name', ''),
                         'first_name': entry.get('athlete_first_name', ''),
                         'last_name': entry.get('athlete_last_name', ''),
-                        'city': entry.get('location_city', '')
+                        'age': entry.get('entry_race_age', ''),
+                        'gender': entry.get('athlete_sex', ''),
+                        'city': entry.get('location_city', ''),
+                        'state': entry.get('location_region', ''),
+                        'country': entry.get('location_country', ''),
+                        'division': entry.get('bracket_name', ''),
+                        'race_name': entry.get('race_name', ''),
+                        'reg_choice': entry.get('reg_choice_name', ''),
+                        'wave': entry.get('wave_name', ''),
+                        'team_name': entry.get('team_name', ''),
+                        'entry_status': entry.get('entry_status', ''),
+                        'entry_type': entry.get('entry_type', ''),
+                        'entry_id': entry.get('entry_id', ''),
+                        'athlete_id': entry.get('athlete_id', '')
                     }
+                    login_progress['loaded_entries'] += 1
     
     print(f"Total runners loaded: {len(roster_data)}")
+    if len(roster_data) != total_rows:
+        print(f"Warning: Expected {total_rows} entries but loaded {len(roster_data)}")
+
+    login_progress['complete'] = True
+
     return True
 
 def generate_auth_seed():
@@ -211,6 +299,24 @@ class TimingHandler(socketserver.StreamRequestHandler):
                 self.write_command("ack", "ping")
                 continue
 
+            # Handle initialization acknowledgments
+            if line.startswith('ack~'):
+                parts = line.split('~')
+                if len(parts) >= 2:
+                    ack_type = parts[1]
+                    if ack_type == 'init':
+                        # Accept any ack~init response
+                        continue
+                    elif ack_type == 'geteventinfo':
+                        # Accept event info response
+                        continue
+                    elif ack_type == 'getlocations':
+                        # Accept locations response
+                        continue
+                    elif ack_type == 'start':
+                        # Accept start acknowledgment
+                        continue
+
             # Process timing data
             processed_data = process_timing_data(line)
             if processed_data:
@@ -220,12 +326,17 @@ class TimingHandler(socketserver.StreamRequestHandler):
 
 def monitor_data_feed():
     """Start the TCP server"""
-    server = socketserver.ThreadingTCPServer(
-        (PROTOCOL_CONFIG['HOST'], PROTOCOL_CONFIG['PORT']), 
-        TimingHandler
-    )
-    print(f"Server listening on port {PROTOCOL_CONFIG['PORT']}")
-    server.serve_forever()
+    print(f"Starting TCP server on {PROTOCOL_CONFIG['HOST']}:{PROTOCOL_CONFIG['PORT']}")
+    try:
+        server = socketserver.ThreadingTCPServer(
+            (PROTOCOL_CONFIG['HOST'], PROTOCOL_CONFIG['PORT']), 
+            TimingHandler
+        )
+        print(f"Server listening on port {PROTOCOL_CONFIG['PORT']}")
+        server.serve_forever()
+    except Exception as e:
+        print(f"Error in TCP server: {e}")
+        raise
 
 def start_listeners():
     """Start TCP listener"""
@@ -239,8 +350,9 @@ def start_listeners():
         try:
             # Start TCP listener
             tcp_thread = threading.Thread(target=monitor_data_feed)
-            tcp_thread.daemon = True
+            tcp_thread.daemon = False  # Make it a non-daemon thread
             tcp_thread.start()
+            print("TCP server thread started")
             
             listeners_started = True
             return True
@@ -280,12 +392,24 @@ def process_timing_data(line):
                 print(f"Found bib {data['bib']} in roster")
                 runner_data = roster_data[data['bib']]
                 processed_data = {
-                    'name': f"{runner_data['first_name']} {runner_data['last_name']}",
+                    'name': runner_data['name'],  # Use full name from entry_name
+                    'first_name': runner_data['first_name'],
+                    'last_name': runner_data['last_name'],
+                    'age': runner_data['age'],
+                    'gender': runner_data['gender'],
                     'city': runner_data['city'],
+                    'state': runner_data['state'],
+                    'country': runner_data['country'],
+                    'division': runner_data['division'],
+                    'race_name': runner_data['race_name'],
+                    'reg_choice': runner_data['reg_choice'],
+                    'wave': runner_data['wave'],
+                    'team_name': runner_data['team_name'],
                     'message': random.choice(RANDOM_MESSAGES),
                     'timestamp': data['time'],
                     'location': data['location'],
-                    'lap': data['lap']
+                    'lap': data['lap'],
+                    'bib': data['bib']
                 }
                 print(f"Runner found: {processed_data}")
                 return processed_data
@@ -297,14 +421,23 @@ def process_timing_data(line):
         print(f"Line causing error: {line}")
     return None
 
-@app.route('/')
-def index():
+@app.route('/old')
+def old_index():
     default_credentials = {
         'user_id': API_CONFIG.get('DEFAULT_USER_ID', ''),
         'event_id': API_CONFIG.get('DEFAULT_EVENT_ID', ''),
         'password': API_CONFIG.get('DEFAULT_PASSWORD', '')
     }
-    return render_template('index.html', credentials=default_credentials)
+    return render_template('old_index.html', credentials=default_credentials)
+
+@app.route('/', defaults={'path': ''})
+@app.route('/<path:path>')
+def serve_react(path):
+    dist_dir = os.path.join(app.root_path, 'frontend', 'dist')
+    file_path = os.path.join(dist_dir, path)
+    if path != '' and os.path.exists(file_path):
+        return send_from_directory(dist_dir, path)
+    return send_from_directory(dist_dir, 'index.html')
 
 @app.route('/api/test-connection', methods=['POST'])
 def test_connection():
@@ -435,6 +568,11 @@ def login():
     
     return jsonify(response)
 
+@app.route('/api/login-progress')
+def get_login_progress():
+    """Return current roster loading progress"""
+    return jsonify(login_progress)
+
 @app.route('/stream')
 def stream():
     def generate():
@@ -447,14 +585,19 @@ def stream():
                 # Send keepalive message if no data
                 yield f"data: {json.dumps({'keepalive': True})}\n\n"
     
-    return Response(generate(), mimetype='text/event-stream')
+    response = Response(generate(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Connection'] = 'keep-alive'
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    return response
 
 def is_valid_url(url):
     """Validate URL format and security"""
     try:
         result = urlparse(url)
         return all([result.scheme, result.netloc])
-    except:
+    except Exception as e:
+        logger.error("Failed to parse URL '%s': %s", url, e)
         return False
 
 def extract_colors_from_css(css_text):
@@ -529,7 +672,8 @@ def fetch_styles():
                     if css_response.ok:
                         styles['colors'].update(extract_colors_from_css(css_response.text))
                         styles['fonts'].update(extract_fonts_from_css(css_response.text))
-                except:
+                except requests.RequestException as e:
+                    logger.warning("Failed to fetch CSS %s: %s", css_url, e)
                     continue
         
         # Process inline styles
@@ -556,10 +700,77 @@ def fetch_styles():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+# ---------------------------------------------------------------------------
+# Template and asset management endpoints
+# ---------------------------------------------------------------------------
+
+@app.route('/api/upload-image', methods=['POST'])
+def upload_image():
+    """Handle image uploads from the editor"""
+    logger.info("Received upload request")
+    logger.info("Request files: %s", request.files)
+    logger.info("Request form: %s", request.form)
+    
+    # Try different possible field names for files
+    files = (request.files.getlist('files[]') or 
+             request.files.getlist('files') or 
+             request.files.getlist('file'))
+             
+    if not files:
+        logger.error("No files found in request")
+        return jsonify({'error': 'No files uploaded'}), 400
+        
+    urls = []
+    for f in files:
+        logger.info("Processing file: %s", f.filename)
+        fname = ''.join(c for c in f.filename if c.isalnum() or c in ('_', '-', '.'))
+        path = os.path.join(UPLOAD_DIR, fname)
+        try:
+            f.save(path)
+            urls.append(f'/static/uploads/{fname}')
+            logger.info("Successfully saved file to: %s", path)
+        except Exception as e:
+            logger.error("Failed to save file: %s", str(e))
+            return jsonify({'error': f'Failed to save file: {str(e)}'}), 500
+            
+    return jsonify({'data': urls})
+
+
+@app.route('/api/templates', methods=['GET', 'POST'])
+def manage_templates():
+    """Save a template or list available templates"""
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        name = data.get('name')
+        html = data.get('html')
+        if not name or not html:
+            return jsonify({'error': 'Missing name or html'}), 400
+        safe = ''.join(c for c in name if c.isalnum() or c in ('_', '-')).rstrip()
+        with open(os.path.join(TEMPLATE_DIR, f'{safe}.html'), 'w', encoding='utf-8') as fp:
+            fp.write(html)
+        return jsonify({'success': True})
+
+    templates = [f[:-5] for f in os.listdir(TEMPLATE_DIR) if f.endswith('.html')]
+    return jsonify(templates)
+
+
+@app.route('/api/templates/<name>', methods=['GET'])
+def get_template(name):
+    """Retrieve a saved template"""
+    safe = ''.join(c for c in name if c.isalnum() or c in ('_', '-')).rstrip()
+    path = os.path.join(TEMPLATE_DIR, f'{safe}.html')
+    if not os.path.exists(path):
+        return jsonify({'error': 'Template not found'}), 404
+    with open(path, 'r', encoding='utf-8') as fp:
+        html = fp.read()
+    return jsonify({'html': html})
+
 if __name__ == '__main__':
     app.run(
         debug=SERVER_CONFIG['DEBUG'],
         host=SERVER_CONFIG['HOST'],
         port=SERVER_CONFIG['PORT'],
-        use_reloader=False
+        use_reloader=False,
+        threaded=True
     )

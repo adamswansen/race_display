@@ -1,0 +1,29 @@
+.runner-display-container {
+  position: relative;
+  min-height: 100vh;
+}
+
+.runner-template {
+  padding: 1rem;
+}
+
+.settings-btn {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 1000;
+  opacity: 0.8;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 250px;
+  height: 100%;
+  background: #f8f9fa;
+  border-left: 1px solid #ddd;
+  padding: 1rem;
+  overflow-y: auto;
+  z-index: 1100;
+}
