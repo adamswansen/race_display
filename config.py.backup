@@ -1,0 +1,84 @@
+# config.py - Race Display Configuration for display.project88hub.com
+
+# Random messages for display rotation
+RANDOM_MESSAGES = [
+    "Welcome to Race Display",
+    "Real-time timing data",
+    "Live race results",
+    "Powered by project88hub.com",
+    "Timing system connected",
+    "Ready for race data"
+]
+
+# API Configuration
+API_CONFIG = {
+    'base_url': 'https://display.project88hub.com',
+    'timeout': 30,
+    'retries': 3,
+    'headers': {
+        'User-Agent': 'RaceDisplay/1.0',
+        'Content-Type': 'application/json'
+    }
+}
+
+# Protocol Configuration (TCP Server for timing data)
+PROTOCOL_CONFIG = {
+    'HOST': '0.0.0.0',  # Accept connections from timing systems
+    'PORT': 61611,      # Port for timing data (keep default from app)
+    'BUFFER_SIZE': 1024,
+    'TIMEOUT': 30
+}
+
+# Server Configuration (Flask web server)
+SERVER_CONFIG = {
+    'HOST': '127.0.0.1',  # Internal only, Apache proxies external requests
+    'PORT': 5000,         # Flask app port
+    'DEBUG': False,       # Set to True for development
+    'SECRET_KEY': 'change-this-super-secret-key-in-production-12345',
+    'THREADED': True,
+    'USE_RELOADER': False
+}
+
+# Database Configuration (optional - using your existing PostgreSQL)
+DATABASE_CONFIG = {
+    'host': 'localhost',
+    'port': 5432,
+    'database': 'project88_myappdb',
+    'user': 'project88_myappuser',
+    'password': 'puctuq-cefwyq-3boqRe'
+}
+
+# Logging Configuration
+LOGGING_CONFIG = {
+    'level': 'INFO',
+    'format': '%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    'file': '/home/appuser/projects/race_display/logs/app.log'
+}
+
+# CORS Configuration
+CORS_CONFIG = {
+    'origins': [
+        'https://display.project88hub.com',
+        'https://project88hub.com',
+        'https://ai.project88hub.com'
+    ],
+    'methods': ['GET', 'POST', 'PUT', 'DELETE'],
+    'allow_headers': ['Content-Type', 'Authorization']
+}
+
+# Raw Tag Data Database Configuration (separate from main production DB)
+RAW_TAG_DATABASE_CONFIG = {
+    'host': 'localhost',
+    'port': 5432,
+    'database': 'raw_tag_data',
+    'user': 'race_timing_user',
+    'password': 'Rt8#mK9$vX2&nQ5@pL7'
+}
+
+# Enhanced timing configuration
+TIMING_CONFIG = {
+    'store_to_database': True,  # Enable database storage
+    'auto_create_session': True,  # Automatically create timing session
+    'session_name_format': 'Session_%Y%m%d_%H%M%S',  # Session naming format
+    'debug_timing': True  # Enable timing debug logs
+}
